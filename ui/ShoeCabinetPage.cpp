@@ -36,6 +36,7 @@ void ShoeCabinetPage::reloadData() {
 
 void ShoeCabinetPage::handleIncomingShoeCabinetData(const QList<QVariantMap>& data)
 {
+    qDebug() << "------------ ShoeCabinetPage::handleIncomingShoeCabinetData " << data.size() << " ----";
     table->setRowCount(data.size());
     for (int i = 0; i < data.size(); ++i) {
         table->setItem(i, 0, new QTableWidgetItem(QString::number(data[i]["id"].toInt())));

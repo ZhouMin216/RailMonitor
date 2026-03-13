@@ -53,4 +53,5 @@ private:
 
 private:
     QSqlDatabase m_db;
+    QString m_connectionName;
 };

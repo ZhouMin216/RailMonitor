@@ -131,14 +131,21 @@ DatabaseManager::~DatabaseManager() {
     if (m_db.isOpen()) {
         m_db.close();
     }
+    if (!m_connectionName.isEmpty()) {
+        QSqlDatabase::removeDatabase(m_connectionName); // ✅ 必须调用！
+    }
 }
 
 
 void DatabaseManager::initDatabase() {
     // 注意：每个线程需要独立的数据库连接名
     QString dbPath = QDir::currentPath() + "/devices.db";
-    m_db = QSqlDatabase::addDatabase("QSQLITE", "WorkerConnection_" + QString::number((quint64)this));
+    qDebug() << "================ Database path:" << dbPath;
+    m_connectionName = "WorkerConnection_" + QString::number((quint64)this);
+    m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
+    // m_db = QSqlDatabase::addDatabase("QSQLITE");
     m_db.setDatabaseName(dbPath);
+
 
     if (!m_db.open()) {
         emit errorOccurred("Database open failed: " + m_db.lastError().text());
@@ -151,7 +158,7 @@ void DatabaseManager::initDatabase() {
     //            "device_id TEXT UNIQUE NOT NULL, name TEXT, value REAL, status TEXT, last_update_time DATETIME)");
     // query.exec("CREATE INDEX IF NOT EXISTS idx_device_id ON devices(device_id)");
 
-    QSqlQuery query;
+    QSqlQuery query(m_db);
     query.exec(R"(
         CREATE TABLE IF NOT EXISTS tie_shoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -217,8 +224,10 @@ void DatabaseManager::handleIncomingCabinetData(const CabinetData &data)
 
 void DatabaseManager::handleGetShoeData()
 {
-    qDebug() << "=============== handleGetShoeData ====================";
-    emit allShoeData(getTieShoes());
+    qDebug() << "=============== DatabaseManager::handleGetShoeData ====================";
+    auto data = getTieShoes();
+    qDebug() << "=============== emit data_size:" << data.size()<< " ====================";
+    emit allShoeData(data);
     qDebug() << "===================================";
 }
 
@@ -245,7 +254,15 @@ void DatabaseManager::handleSaveGeoFence(const QList<QPointF>& point)
 
 QList<QVariantMap> DatabaseManager::getTieShoes() {
     QList<QVariantMap> result;
-    QSqlQuery query("SELECT id, shoe_id, location, status FROM tie_shoes");
+    QSqlQuery query(m_db);
+    query.prepare("SELECT id, shoe_id, location, status FROM tie_shoes");
+    // QSqlQuery query("SELECT id, shoe_id, location, status FROM tie_shoes");
+
+    if (!query.exec()) { // 👈 必须 exec()
+        qWarning() << "Query failed:" << query.lastError();
+        return result;
+    }
+
     while (query.next()) {
         QVariantMap row;
         row["id"] = query.value(0).toInt();
@@ -259,7 +276,14 @@ QList<QVariantMap> DatabaseManager::getTieShoes() {
 
 QList<QVariantMap> DatabaseManager::getShoeCabinets() {
     QList<QVariantMap> result;
-    QSqlQuery query("SELECT id, cabinet_id, position, capacity FROM shoe_cabinets");
+    QSqlQuery query(m_db);
+    query.prepare("SELECT id, cabinet_id, position, capacity FROM shoe_cabinets");
+    // QSqlQuery query("SELECT id, cabinet_id, position, capacity FROM shoe_cabinets");
+    if (!query.exec()) { // 👈 必须 exec()
+        qWarning() << "Query failed:" << query.lastError();
+        return result;
+    }
+
     while (query.next()) {
         QVariantMap row;
         row["id"] = query.value(0).toInt();
@@ -273,7 +297,14 @@ QList<QVariantMap> DatabaseManager::getShoeCabinets() {
 
 QList<QPointF> DatabaseManager::loadGeoFence() {
     QList<QPointF> result;
-    QSqlQuery query("SELECT points FROM geo_fence WHERE id = 1");
+    QSqlQuery query(m_db);
+    query.prepare("SELECT points FROM geo_fence WHERE id = 1");
+    // QSqlQuery query("SELECT points FROM geo_fence WHERE id = 1");
+    if (!query.exec()) { // 👈 必须 exec()
+        qWarning() << "Query failed:" << query.lastError();
+        return result;
+    }
+
     if (query.next()) {
         QByteArray jsonBytes = query.value(0).toByteArray();
         QJsonDocument doc = QJsonDocument::fromJson(jsonBytes);
@@ -300,7 +331,7 @@ void DatabaseManager::saveGeoFence(const QList<QPointF>& points) {
     QJsonDocument doc(arr);
     QString jsonStr = doc.toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(m_db);
     query.prepare("INSERT OR REPLACE INTO geo_fence (id, points) VALUES (1, ?)");
     query.addBindValue(jsonStr);
     if (!query.exec()) {

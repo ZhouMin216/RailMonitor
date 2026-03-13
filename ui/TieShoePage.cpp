@@ -35,6 +35,7 @@ void TieShoePage::reloadData() {
 
 void TieShoePage::handleIncomingShoeData(const QList<QVariantMap>& data)
 {
+    qDebug() << "------------ TieShoePage::handleIncomingShoeData " << data.size() << " ----";
     table->setRowCount(data.size());
     for (int i = 0; i < data.size(); ++i) {
         table->setItem(i, 0, new QTableWidgetItem(QString::number(data[i]["id"].toInt())));

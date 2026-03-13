@@ -128,10 +128,10 @@ void MainWindow::applyFlatStyle() {
 
 void MainWindow::setupUI() {
     // 创建页面
-    mapPage = new RailMapViewerWidget;
-    tieShoePage = new TieShoePage;
-    cabinetPage = new ShoeCabinetPage;
-    netPage = new NetworkConfigPage;
+    mapPage = new RailMapViewerWidget(this);
+    tieShoePage = new TieShoePage(this);
+    cabinetPage = new ShoeCabinetPage(this);
+    netPage = new NetworkConfigPage(this);
 
     contentStack = new QStackedWidget;
     contentStack->addWidget(mapPage);

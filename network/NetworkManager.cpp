@@ -46,7 +46,11 @@ NetworkManager::NetworkManager(QObject *parent)
 }
 
 NetworkManager::~NetworkManager() {
-    stop();
+    // stop();
+    m_discoveryTimer->stop();
+    m_discoveryTimeoutTimer->stop();
+    m_reconnectTimer->stop();
+    m_tcpSocket->disconnectFromHost();
 }
 
 /*
