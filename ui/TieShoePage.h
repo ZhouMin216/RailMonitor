@@ -7,6 +7,13 @@ class TieShoePage : public QWidget {
 public:
     TieShoePage(QWidget *parent = nullptr);
     void reloadData();
+
+public slots:
+    void handleIncomingShoeData(const QList<QVariantMap>& data);
+
+signals:
+    void getShoeData();
+
 private:
     QTableWidget *table;
 };

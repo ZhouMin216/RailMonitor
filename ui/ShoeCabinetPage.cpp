@@ -13,17 +13,35 @@ ShoeCabinetPage::ShoeCabinetPage(QWidget *parent) : QWidget(parent) {
     table->horizontalHeader()->setStretchLastSection(true);
     layout->addWidget(table);
 
-    reloadData();
+    // reloadData();
 }
 
 void ShoeCabinetPage::reloadData() {
-    auto rows = DatabaseManager::getShoeCabinets();
-    table->setRowCount(rows.size());
-    for (int i = 0; i < rows.size(); ++i) {
-        table->setItem(i, 0, new QTableWidgetItem(QString::number(rows[i]["id"].toInt())));
-        table->setItem(i, 1, new QTableWidgetItem(rows[i]["cabinet_id"].toString()));
-        table->setItem(i, 2, new QTableWidgetItem(rows[i]["position"].toString()));
-        table->setItem(i, 3, new QTableWidgetItem(QString::number(rows[i]["capacity"].toInt())));
+    qDebug() << "=============== ShoeCabinetPage::reloadData ====================";
+    emit getShoeCabinetData();
+    qDebug() << "===================================";
+
+    // auto rows = DatabaseManager::getShoeCabinets();
+    // table->setRowCount(rows.size());
+    // for (int i = 0; i < rows.size(); ++i) {
+    //     table->setItem(i, 0, new QTableWidgetItem(QString::number(rows[i]["id"].toInt())));
+    //     table->setItem(i, 1, new QTableWidgetItem(rows[i]["cabinet_id"].toString()));
+    //     table->setItem(i, 2, new QTableWidgetItem(rows[i]["position"].toString()));
+    //     table->setItem(i, 3, new QTableWidgetItem(QString::number(rows[i]["capacity"].toInt())));
+    //     for (int j = 0; j < 4; ++j)
+    //         if (table->item(i, j))
+    //             table->item(i, j)->setTextAlignment(Qt::AlignCenter);
+    // }
+}
+
+void ShoeCabinetPage::handleIncomingShoeCabinetData(const QList<QVariantMap>& data)
+{
+    table->setRowCount(data.size());
+    for (int i = 0; i < data.size(); ++i) {
+        table->setItem(i, 0, new QTableWidgetItem(QString::number(data[i]["id"].toInt())));
+        table->setItem(i, 1, new QTableWidgetItem(data[i]["cabinet_id"].toString()));
+        table->setItem(i, 2, new QTableWidgetItem(data[i]["position"].toString()));
+        table->setItem(i, 3, new QTableWidgetItem(QString::number(data[i]["capacity"].toInt())));
         for (int j = 0; j < 4; ++j)
             if (table->item(i, j))
                 table->item(i, j)->setTextAlignment(Qt::AlignCenter);

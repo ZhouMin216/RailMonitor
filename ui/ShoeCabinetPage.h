@@ -7,6 +7,12 @@ class ShoeCabinetPage : public QWidget {
 public:
     ShoeCabinetPage(QWidget *parent = nullptr);
     void reloadData();
+
+public slots:
+    void handleIncomingShoeCabinetData(const QList<QVariantMap>& data);
+
+signals:
+    void getShoeCabinetData();
 private:
     QTableWidget *table;
 };

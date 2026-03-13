@@ -8,17 +8,29 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     networkManager = new NetworkManager(this); // 新增
+    m_databaseManager = new DatabaseManager(this);
 
     setupUI();
     setupStatusBar(); // 新增状态栏
 
     // connect(tcpClient, &TCPClient::messageReceived, this, &MainWindow::handleTcpMessage);
+    connect(cabinetPage, &ShoeCabinetPage::getShoeCabinetData, m_databaseManager, &DatabaseManager::handleGetCabinetData);
+    connect(m_databaseManager, &DatabaseManager::allShoeCabinetData, cabinetPage, &ShoeCabinetPage::handleIncomingShoeCabinetData);
+
+    connect(tieShoePage, &TieShoePage::getShoeData, m_databaseManager, &DatabaseManager::handleGetShoeData);
+    connect(m_databaseManager, &DatabaseManager::allShoeData, tieShoePage, &TieShoePage::handleIncomingShoeData);
+
+    connect(mapPage, &RailMapViewerWidget::getGeoFence, m_databaseManager, &DatabaseManager::handleGetGeoFence);
+    connect(mapPage, &RailMapViewerWidget::saveGeoFence, m_databaseManager, &DatabaseManager::handleSaveGeoFence);
+    connect(m_databaseManager, &DatabaseManager::geoFenceData, mapPage, &RailMapViewerWidget::handleIncomingFencePoint);
 
     // 接入 NetworkManager
     connect(networkManager, &NetworkManager::stateChanged, this, &MainWindow::updateNetworkStatus);
     connect(networkManager, &NetworkManager::serverDiscovered, this, [this](const QString &ip, int port) {
         // 可选：提示用户已发现服务器
     });
+
+    m_databaseManager->initDatabase();
 
     // 启动自动发现
     networkManager->startDiscovery();
@@ -31,6 +43,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(networkManager, &NetworkManager::tcpMessageReceived, this, [](const QByteArray &data) {
         qDebug() << "App received:" << data;
     });
+
+    tieShoePage->reloadData();
+    cabinetPage->reloadData();
 }
 
 void MainWindow::applyFlatStyle() {

@@ -10,6 +10,7 @@
 #include "ShoeCabinetPage.h"
 #include "NetworkConfigPage.h"
 #include "network/NetworkManager.h"
+#include "database/DatabaseManager.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -36,6 +37,7 @@ private:
     NetworkConfigPage *netPage;
 
     NetworkManager *networkManager;
+    DatabaseManager *m_databaseManager;
     QLabel *statusLabel; // 用于显示状态
 
     QPushButton *mapBtn, *tieShoeBtn, *cabinetBtn, *netBtn, *exitBtn;

@@ -99,92 +99,17 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     loadConfig();
 
     // 加载电子围栏
-    savedFencePoints = DatabaseManager::loadGeoFence();
+    // savedFencePoints = DatabaseManager::loadGeoFence();
 
     drawAll();
 }
 
-// void RailMapViewerWidget::loadConfig() {
-//     QString configPath = QDir::currentPath() + "/config.json";
-//     QFile file(configPath);
-//     if (!file.open(QIODevice::ReadOnly)) {
-//         QMessageBox::critical(this, "错误", "配置文件未找到：" + configPath);
-//         return;
-//     }
-
-//     QByteArray data = file.readAll();
-//     QJsonParseError err;
-//     QJsonDocument doc = QJsonDocument::fromJson(data, &err);
-//     if (err.error != QJsonParseError::NoError) {
-//         QMessageBox::critical(this, "错误", "配置文件格式错误");
-//         return;
-//     }
-
-//     QJsonObject root = doc.object();
-//     const QJsonArray& viaArr = root["via_points"].toArray();
-//     for (const auto& v : viaArr) {
-//         QJsonObject p = v.toObject();
-//         QString id = p["id"].toString();
-//         double lng = p["lng"].toDouble();
-//         double lat = p["lat"].toDouble();
-//         viaPoints[id] = QPointF(lng, lat);
-//     }
-
-//     const QJsonArray& buildArr = root["build_pos"].toArray();
-//     for (const auto& v : buildArr) {
-//         QJsonObject p = v.toObject();
-//         QString id = p["id"].toString();
-//         double lng = p["lng"].toDouble();
-//         double lat = p["lat"].toDouble();
-//         buildPoints[id] = QPointF(lng, lat);
-//     }
-
-//     tracks.clear();
-//     buildings.clear();
-
-//     const QJsonArray& tracksArray = root["tracks"].toArray();
-//     for (const QJsonValue &val : tracksArray) {
-//         if (val.isObject()) {
-//             tracks.append(val.toObject().toVariantMap());
-//         }
-//     }
-
-//     const QJsonArray& buildingsArray = root["buildings"].toArray();
-//     for (const QJsonValue &val : buildingsArray) {
-//         if (val.isObject()) {
-//             buildings.append(val.toObject().toVariantMap());
-//         }
-//     }
-
-//     const QJsonArray& shoeCabinetArray = root["shoeCabinets"].toArray();
-//     for (const QJsonValue &val : shoeCabinetArray) {
-//         if (val.isObject()) {
-//             QJsonObject p = val.toObject();
-//             QString name = p["name"].toString();
-//             double lng = p["lng"].toDouble();
-//             double lat = p["lat"].toDouble();
-//             shoeCabinetPoints[name] = QPointF(lat,lng);
-//         }
-//     }
-
-//     if (viaPoints.isEmpty() && buildPoints.isEmpty()) return;
-
-//     minLat = maxLat = viaPoints.empty() ? buildPoints.first().y() : viaPoints.first().y();
-//     minLng = maxLng = viaPoints.empty() ? buildPoints.first().x() : viaPoints.first().x();
-
-//     auto updateBounds = [&](const QPointF &pt) {
-//         minLat = qMin(minLat, pt.y());
-//         maxLat = qMax(maxLat, pt.y());
-//         minLng = qMin(minLng, pt.x());
-//         maxLng = qMax(maxLng, pt.x());
-//     };
-
-//     for (const QPointF &pt : viaPoints) updateBounds(pt);
-//     for (const QPointF &pt : buildPoints) updateBounds(pt);
-
-//     latSpan = qMax(maxLat - minLat, 1e-8);
-//     lngSpan = qMax(maxLng - minLng, 1e-8);
-// }
+ void RailMapViewerWidget::loadGeoFence()
+{
+     qDebug() << "=============== RailMapViewerWidget::loadGeoFence ====================";
+     emit getGeoFence();
+     qDebug() << "===================================";
+}
 
 void RailMapViewerWidget::loadConfig() {
     // QString configPath = QDir::currentPath() + "/config.json";
@@ -594,7 +519,8 @@ void RailMapViewerWidget::finishFenceDrawing() {
     savedFencePoints = currentFencePoints;
     isDrawingFence = false;
 
-    DatabaseManager::saveGeoFence(savedFencePoints);
+    // DatabaseManager::saveGeoFence(savedFencePoints);
+    emit saveGeoFence(savedFencePoints);
 
     drawAll();
     coordLabel->setText("电子围栏已设置");
@@ -610,6 +536,11 @@ void RailMapViewerWidget::clearFence() {
 
     drawAll();
     coordLabel->setText("电子围栏已清除");
+}
+
+void RailMapViewerWidget::handleIncomingFencePoint(const QList<QPointF>& data)
+{
+    savedFencePoints = data;
 }
 
 void RailMapViewerWidget::add_user_marker() {

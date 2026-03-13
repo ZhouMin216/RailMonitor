@@ -30,6 +30,10 @@ public:
     explicit RailMapViewerWidget(QWidget *parent = nullptr);
     void addDeviceMarker(const QString &name, double lat, double lon);
     QPointF geoToPixel(double lng, double lat);
+    void loadGeoFence();
+
+public slots:
+    void handleIncomingFencePoint(const QList<QPointF>& data);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -39,6 +43,11 @@ private slots:
     void add_user_marker();
     void finishFenceDrawing();
     void clearFence();
+
+
+signals:
+    void getGeoFence();
+    void saveGeoFence(const QList<QPointF>& data);
 
 private:
     void loadConfig();
