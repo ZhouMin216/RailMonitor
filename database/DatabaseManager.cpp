@@ -257,6 +257,18 @@ void DatabaseManager::handleSaveGeoFence(const QList<QPointF>& point)
     qDebug() << "===================================";
 }
 
+void DatabaseManager::handleClearGeoFence()
+{
+    qDebug() << "=============== handleClearGeoFence ====================";
+
+    QSqlQuery query(m_db);
+    query.prepare("DELETE FROM geo_fence WHERE id = 1");
+    if (!query.exec()) {
+        qWarning() << "Failed to delete geo fence:" << query.lastError();
+    }
+    qDebug() << "===================================";
+}
+
 QList<QVariantMap> DatabaseManager::getTieShoes() {
     QList<QVariantMap> result;
     QSqlQuery query(m_db);

@@ -32,6 +32,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     connect(mapPage, &RailMapViewerWidget::getGeoFence, m_databaseManager, &DatabaseManager::handleGetGeoFence);
     connect(mapPage, &RailMapViewerWidget::saveGeoFence, m_databaseManager, &DatabaseManager::handleSaveGeoFence);
+    connect(mapPage, &RailMapViewerWidget::clearGeoFence, m_databaseManager, &DatabaseManager::handleClearGeoFence);
+
     connect(m_databaseManager, &DatabaseManager::geoFenceData, mapPage, &RailMapViewerWidget::handleIncomingFencePoint);
 
     // 接入 NetworkManager
@@ -60,6 +62,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         qDebug() << "App received:" << data;
     });
 
+    mapPage->loadGeoFence();
     qDebug() << "9. MainWindow created:" << timer.elapsed() << "ms";
     tieShoePage->reloadData();
     qDebug() << "10. MainWindow created:" << timer.elapsed() << "ms";

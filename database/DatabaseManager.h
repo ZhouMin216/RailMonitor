@@ -31,6 +31,7 @@ public slots:
     void handleGetCabinetData();
     void handleGetGeoFence();
     void handleSaveGeoFence(const QList<QPointF>& point);
+    void handleClearGeoFence();
 
     // 可选：定时清理或批量处理槽
 

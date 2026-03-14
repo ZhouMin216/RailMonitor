@@ -52,6 +52,7 @@ private slots:
 
 
 signals:
+    void clearGeoFence();
     void getGeoFence();
     void saveGeoFence(const QList<QPointF>& data);
 

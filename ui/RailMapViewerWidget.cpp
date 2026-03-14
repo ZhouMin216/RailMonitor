@@ -296,7 +296,7 @@ void RailMapViewerWidget::drawAll() {
     drawTracks();
     drawBuildings();
     // drawViaPoints();
-    // drawFence();
+    drawFence();
     // drawShoeCabinet();
 
     return;
@@ -520,6 +520,8 @@ void RailMapViewerWidget::finishFenceDrawing() {
     isDrawingFence = false;
 
     // DatabaseManager::saveGeoFence(savedFencePoints);
+
+    qDebug() << "emit savedFencePoints,size:" << savedFencePoints.size();
     emit saveGeoFence(savedFencePoints);
 
     drawAll();
@@ -527,12 +529,13 @@ void RailMapViewerWidget::finishFenceDrawing() {
 }
 
 void RailMapViewerWidget::clearFence() {
+    emit clearGeoFence();
     savedFencePoints.clear();
     currentFencePoints.clear();
     isDrawingFence = false;
 
-    QSqlQuery query;
-    query.exec("DELETE FROM geo_fence WHERE id = 1");
+    // QSqlQuery query;
+    // query.exec("DELETE FROM geo_fence WHERE id = 1");
 
     drawAll();
     coordLabel->setText("电子围栏已清除");
