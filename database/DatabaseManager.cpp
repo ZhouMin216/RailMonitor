@@ -197,29 +197,34 @@ void DatabaseManager::initDatabase() {
     query.exec();
 }
 
-void DatabaseManager::handleIncomingShoeData(const ShoeData &data)
+void DatabaseManager::handleBaseStationShoeData(const QList<ShoeData>& data)
 {
-    qDebug() << "============= handleIncomingShoeData ======================";
-    qDebug() << "wDevID: " << data.wDevID
-             << " byBatVal: " << data.byBatVal
-             << " byPosQuality: " << data.byPosQuality
-             << " lng: " << QString::number(data.lng, 'f', 6)
-             << " lat: " << QString::number(data.lat, 'f', 6);
+    qDebug() << "============= DatabaseManager::handleBaseStationShoeData Start  ==============";
+    for(const auto& shoe:data)
+    {
+        qDebug() << "wDevID: " << shoe.wDevID
+                 << " byBatVal: " << shoe.byBatVal
+                 << " byPosQuality: " << shoe.byPosQuality
+                 << " lng: " << QString::number(shoe.lng, 'f', 6)
+                 << " lat: " << QString::number(shoe.lat, 'f', 6);
+    }
 
     emit shoeDataUpdate(data);
-    void cabinetDataUpdated(const CabinetData &data);
-    qDebug() << "===================================";
+    qDebug() << "========= DatabaseManager::handleBaseStationShoeData End===========";
 }
 
-void DatabaseManager::handleIncomingCabinetData(const CabinetData &data)
+void DatabaseManager::handleBaseStationCabinetData(const QList<CabinetData>& data)
 {
-    qDebug() << "=============== handleIncomingCabinetDataa ====================";
-    qDebug() << "wDevID: " << data.wDevID
-             << " byStoreNum: " << data.byStoreNum
-             << " abyStatus: " << data.abyStatus.toHex(' ').toUpper();
+    qDebug() << "=============== DatabaseManager::handleBaseStationCabinetData Start ==========";
+    for(const auto& shoe:data)
+    {
+        qDebug() << "wDevID: " << shoe.wDevID
+                 << " byStoreNum: " << shoe.byStoreNum
+                 << " abyStatus: " << shoe.abyStatus.toHex(' ').toUpper();
+    }
 
     emit cabinetDataUpdated(data);
-    qDebug() << "===================================";
+    qDebug() << "=======DatabaseManager::handleBaseStationCabinetData End =========";
 }
 
 void DatabaseManager::handleGetShoeData()

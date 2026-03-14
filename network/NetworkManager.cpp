@@ -303,14 +303,20 @@ void NetworkManager::onTcpReadyRead() {
             break;
         }
         case ProtocolPacket::DT_EVENT_DATA: {
-
+            break;
         }
         case ProtocolPacket::DT_STATUS_DATA: {
             DeviceParser device(0x00);
             if (device.unpack(packet)) {
-
+                auto shoes = device.getShoeData();
+                auto cabinets = device.getCabinetData();
+                if (!shoes.empty()) {
+                    qDebug() << "StatusData: emit shoeData ";
+                    emit shoeData(shoes);
+                }
+                if (!cabinets.empty()) emit cabinetData(cabinets);
             } else {
-                qDebug() << "m_recvBuffer unpack error ";
+                qDebug() << "StatusData: m_recvBuffer unpack error ";
             }
             break;
         }

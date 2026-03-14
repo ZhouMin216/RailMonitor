@@ -11,6 +11,8 @@
 #include <QMessageBox>
 #include <QGraphicsItemGroup>
 
+#include "protocol/DeviceParser.h"
+
 struct RailTrack {
     int number;
     QString name;
@@ -24,6 +26,7 @@ struct Building {
 };
 
 class ShoeCabinetItem;
+class DeviceMarkerItem;
 class RailMapViewerWidget : public QWidget {
     Q_OBJECT
 public:
@@ -33,7 +36,10 @@ public:
     void loadGeoFence();
 
 public slots:
+    // 接收外部数据
     void handleIncomingFencePoint(const QList<QPointF>& data);
+    void updateCabinets(const QList<CabinetData>& data);
+    void updateShoes(const QList<ShoeData>& data);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -73,6 +79,7 @@ private:
     QList<QVariantMap> tracks;
     QList<QVariantMap> buildings;
     QMap<QString,ShoeCabinetItem*> shoeCabinet;
+    QMap<quint16, DeviceMarkerItem*> shoeMap;
 
     QList<RailTrack> railTracks_;
     QList<Building> buildings_;
@@ -97,15 +104,24 @@ private:
 class DeviceMarkerItem : public QGraphicsItemGroup {
 public:
     explicit DeviceMarkerItem(const QString &name, double lat, double lon, QGraphicsScene *scene, RailMapViewerWidget *parent);
+    explicit DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, RailMapViewerWidget *parent);
 
     // 重写 mousePressEvent 以响应点击
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
 
+    void updateData(const ShoeData& data);
+    quint16 getDevID(){ return devID; }
+
 private:
+    void setupUI();
+
+private:
+    quint16 devID;
     QString deviceName;
     double latitude;
     double longitude;
     RailMapViewerWidget *parentWidget; // 用于调用父窗口的槽函数
+    ShoeData shoeData;
 
     // 模拟参数 (可以扩展)
     QMap<QString, QVariant> simulatedParams;

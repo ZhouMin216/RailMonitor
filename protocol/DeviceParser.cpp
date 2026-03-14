@@ -2,7 +2,8 @@
 #include <QDebug>
 
 double convertDmToDecimal(qint16 degrees, qint32 minutes) {
-    return degrees + minutes / 60.0;
+    // return degrees + minutes / 60.0;
+    return degrees + minutes / 10000000.0;
 }
 
 DeviceParser::DeviceParser(quint16 deviceId)
@@ -39,9 +40,9 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
     }
 
     // 检查类型和长度
-    if (m_byDevType != static_cast<quint8>(PC_END)) {
-        return false;
-    }
+    // if (m_byDevType != static_cast<quint8>(BASE_STATION)) {
+    //     return false;
+    // }
 
     int offset = 0;
 
@@ -96,6 +97,7 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         shoe.byBatVal = static_cast<quint8>(m_abyData[offset++]);
         // 读取位置质量
         shoe.byPosQuality = static_cast<PosQuality>(m_abyData[offset++]);
+        shoe.byStarNum = static_cast<quint8>(m_abyData[offset++]);
 
         quint16 LngDegree = 0;
         if (!LittleEndianReader::tryReadUInt16(m_abyData, offset, LngDegree)) {
@@ -156,6 +158,7 @@ void DeviceParser::Print()
          */
         qDebug() << "wDevID: " << shoe.wDevID
                  << " byBatVal: " << shoe.byBatVal
+                 << " byStarNum: " << shoe.byStarNum
                  << " byPosQuality: " << shoe.byPosQuality
                  << " lng: " << QString::number(shoe.lng, 'f', 6)
                  << " lat: " << QString::number(shoe.lat, 'f', 6);

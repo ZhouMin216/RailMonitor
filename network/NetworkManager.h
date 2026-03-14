@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QHostAddress>
 #include "protocol/ProtocolPacket.h"
+#include "protocol/DeviceParser.h"
 
 class NetworkManager : public QObject
 {
@@ -42,6 +43,8 @@ signals:
     void tcpMessageReceived(const QByteArray &data);
     void errorOccurred(const QString &error);
     void timeSyncReceived(quint32 unixTime, quint16 deviceId);
+    void cabinetData(const QList<CabinetData>& data);
+    void shoeData(const QList<ShoeData>& data);
 
 private slots:
     void onUdpReadyRead();

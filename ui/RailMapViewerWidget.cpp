@@ -13,7 +13,7 @@
 #include <QJsonArray>
 #include <QMouseEvent>
 #include <QMap>
-
+#include <QThread>
 #include <QMessageBox>
 #include <QGraphicsSceneMouseEvent>
 #include <QTimer>
@@ -538,6 +538,40 @@ void RailMapViewerWidget::clearFence() {
     coordLabel->setText("电子围栏已清除");
 }
 
+void RailMapViewerWidget::updateCabinets(const QList<CabinetData>& data)
+{
+
+}
+
+void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
+{
+    qDebug() << "updateShoes called in thread:" << QThread::currentThread();
+    qDebug() << "RailMapViewerWidget lives in thread:" << this->thread();
+
+    qDebug() << "RailMapViewerWidget::updateShoes  " << data.size();
+    for(const auto& shoe:data)
+    {
+        // QMap<quint16, DeviceMarkerItem*> shoeMap;
+        if (shoeMap.contains(shoe.wDevID))
+        {
+            qDebug() << " DeviceMarkerItem update  " << data.size();
+            shoeMap[shoe.wDevID]->updateData(shoe);
+        } else
+        {
+            qDebug() << " DeviceMarkerItem create  " << data.size();
+            DeviceMarkerItem *marker = new DeviceMarkerItem(shoe, scene, this);
+            shoeMap[shoe.wDevID] = marker;
+            scene->addItem(marker);
+        }
+        qDebug() << "wDevID: " << shoe.wDevID
+                 << " byBatVal: " << shoe.byBatVal
+                 << " byStarNum: " << shoe.byStarNum
+                 << " byPosQuality: " << shoe.byPosQuality
+                 << " lng: " << QString::number(shoe.lng, 'f', 7)
+                 << " lat: " << QString::number(shoe.lat, 'f', 7);
+    }
+}
+
 void RailMapViewerWidget::handleIncomingFencePoint(const QList<QPointF>& data)
 {
     savedFencePoints = data;
@@ -622,22 +656,8 @@ bool RailMapViewerWidget::pointInPolygon(const QPointF& point, const QList<QPoin
 
 DeviceMarkerItem::DeviceMarkerItem(const QString &name, double lat, double lon, QGraphicsScene *scene, RailMapViewerWidget *parent)
     : deviceName(name), latitude(lat), longitude(lon), parentWidget(parent) {
-
-    // 创建椭圆
-    QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(-4, -4, 8, 8);
-    ellipse->setPen(QPen(Qt::darkGreen, 2));
-    ellipse->setBrush(Qt::green);
-    ellipse->setFlag(QGraphicsItem::ItemIsSelectable); // 启用选择
-    ellipse->setFlag(QGraphicsItem::ItemIsFocusable); // 启用焦点
-
-    // 创建文本
-    QGraphicsTextItem *text = new QGraphicsTextItem(name);
-    text->setDefaultTextColor(Qt::black); // 可选：设置文字颜色
-    text->setPos(-5, -5); // 相对于椭圆的位置
-
-    // 将子项添加到组中
-    addToGroup(ellipse);
-    addToGroup(text);
+    devID = 0;
+    setupUI();
 
     // 设置组的坐标 (相对于场景)
     QPointF px = parentWidget->geoToPixel(lon, lat);
@@ -648,6 +668,55 @@ DeviceMarkerItem::DeviceMarkerItem(const QString &name, double lat, double lon, 
     simulatedParams["电压"] = 12.3;
     simulatedParams["状态"] = "运行中";
     simulatedParams["信号强度"] = 85;
+}
+
+DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, RailMapViewerWidget *parent)
+    : shoeData(data), parentWidget(parent)
+{
+    devID = shoeData.wDevID;
+    deviceName = QString("铁鞋%1").arg(shoeData.wDevID);
+    latitude = shoeData.lat;
+    longitude = shoeData.lng;
+    setupUI();
+
+    // 设置组的坐标 (相对于场景)
+    QPointF px = parentWidget->geoToPixel(shoeData.lng, shoeData.lat);
+    setPos(px.x(), px.y());
+
+    // 初始化模拟参数 (示例数据)
+    simulatedParams["温度"] = 25.5;
+    simulatedParams["电压"] = 12.3;
+    simulatedParams["状态"] = "运行中";
+    simulatedParams["信号强度"] = 85;
+}
+
+void DeviceMarkerItem::setupUI()
+{
+    // 创建椭圆
+    QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(-4, -4, 8, 8);
+    ellipse->setPen(QPen(Qt::darkGreen, 2));
+    ellipse->setBrush(Qt::green);
+    ellipse->setFlag(QGraphicsItem::ItemIsSelectable); // 启用选择
+    ellipse->setFlag(QGraphicsItem::ItemIsFocusable); // 启用焦点
+
+    // 创建文本
+    QGraphicsTextItem *text = new QGraphicsTextItem(deviceName);
+    text->setDefaultTextColor(Qt::green); // 可选：设置文字颜色
+    text->setPos(-5, -5); // 相对于椭圆的位置
+
+    // 将子项添加到组中
+    addToGroup(ellipse);
+    addToGroup(text);
+}
+
+void DeviceMarkerItem::updateData(const ShoeData& data)
+{
+    latitude = shoeData.lat;
+    longitude = shoeData.lng;
+
+    // 设置组的坐标 (相对于场景)
+    QPointF px = parentWidget->geoToPixel(data.lng, data.lat);
+    setPos(px.x(), px.y());
 }
 
 void DeviceMarkerItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {

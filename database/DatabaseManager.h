@@ -22,10 +22,11 @@ public:
     void initDatabase();
 
 public slots:
-    // 核心槽函数：接收网络层传来的原始数据
-    void handleIncomingShoeData(const ShoeData &data);
-    void handleIncomingCabinetData(const CabinetData &data);
+     // 接收基站传来的数据
+    void handleBaseStationShoeData(const QList<ShoeData>& data);
+    void handleBaseStationCabinetData(const QList<CabinetData>& data);
 
+    // 接收ui发送的请求
     void handleGetShoeData();
     void handleGetCabinetData();
     void handleGetGeoFence();
@@ -34,9 +35,9 @@ public slots:
     // 可选：定时清理或批量处理槽
 
 signals:
-    // 通知 UI 有新数据加入（包含完整行数据，方便 UI 直接插入）
-    void shoeDataUpdate(const ShoeData &data);
-    void cabinetDataUpdated(const CabinetData &data);
+    // 通知 UI 有新数据加入
+    void shoeDataUpdate(const QList<ShoeData>& data);
+    void cabinetDataUpdated(const QList<CabinetData>& data);
 
     void allShoeData(const QList<QVariantMap>& data);
     void allShoeCabinetData(const QList<QVariantMap>& data);

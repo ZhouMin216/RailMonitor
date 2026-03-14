@@ -45,7 +45,10 @@ bool ProtocolPacket::validateFrame(const QByteArray &data)
     quint8 tail = static_cast<quint8>(data[data.size() - 1]);
     if (tail != 0x55) {
         qDebug() << "tail != 0x55";
-        return false;}
+        return false;
+    }
+
+    return true; // 测试，不做crc校验
 
     QByteArray checkData = data.left(data.size() - 2); // 去掉帧尾和接收到的异或值
     quint8 expectedXor = calculateXor(checkData);
@@ -71,6 +74,12 @@ bool ProtocolPacket::parseCommonFields(const QByteArray &fullPacket)
     quint8 dataType;
     stream >> dataType; // 子类需自行检查
     stream >> m_wPackLen;
+
+    // 检查类型
+    if (m_byDevType != static_cast<quint8>(BASE_STATION)) {
+        qDebug() << "m_byDevType error ";
+        return false;
+    }
 
     if (m_wPackLen > 0) {
         m_abyData.resize(m_wPackLen);

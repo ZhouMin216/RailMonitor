@@ -6,12 +6,22 @@
 #include "protocol/TimeSyncResponse.h"
 #include "protocol/WhitelistSync.h"
 
+#include <QElapsedTimer>
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+    QElapsedTimer timer;
+    timer.start();
+
+     qDebug() << "1. MainWindow created:" << timer.elapsed() << "ms";
     networkManager = new NetworkManager(this); // 新增
+     qDebug() << "2. MainWindow created:" << timer.elapsed() << "ms";
     m_databaseManager = new DatabaseManager(this);
+    qDebug() << "3. MainWindow created:" << timer.elapsed() << "ms";
 
     setupUI();
+    qDebug() << "4. MainWindow created:" << timer.elapsed() << "ms";
     setupStatusBar(); // 新增状态栏
+    qDebug() << "5. MainWindow created:" << timer.elapsed() << "ms";
 
     // connect(tcpClient, &TCPClient::messageReceived, this, &MainWindow::handleTcpMessage);
     connect(cabinetPage, &ShoeCabinetPage::getShoeCabinetData, m_databaseManager, &DatabaseManager::handleGetCabinetData);
@@ -30,10 +40,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         // 可选：提示用户已发现服务器
     });
 
+    connect(networkManager, &NetworkManager::cabinetData, mapPage, &RailMapViewerWidget::updateCabinets);
+    connect(networkManager, &NetworkManager::shoeData, mapPage, &RailMapViewerWidget::updateShoes);
+
+    qDebug() << "6. MainWindow created:" << timer.elapsed() << "ms";
     m_databaseManager->initDatabase();
+    qDebug() << "7. MainWindow created:" << timer.elapsed() << "ms";
 
     // 启动自动发现
     networkManager->startDiscovery();
+    qDebug() << "8. MainWindow created:" << timer.elapsed() << "ms";
 
     // 发送数据
     // connect(this, &MainWindow::sendMessage, networkManager, &NetworkManager::sendTcpMessage);
@@ -44,8 +60,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         qDebug() << "App received:" << data;
     });
 
+    qDebug() << "9. MainWindow created:" << timer.elapsed() << "ms";
     tieShoePage->reloadData();
+    qDebug() << "10. MainWindow created:" << timer.elapsed() << "ms";
     cabinetPage->reloadData();
+    qDebug() << "11. MainWindow created:" << timer.elapsed() << "ms";
 }
 
 void MainWindow::applyFlatStyle() {

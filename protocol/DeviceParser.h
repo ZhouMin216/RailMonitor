@@ -14,6 +14,7 @@ struct ShoeData {
     quint16 wDevID;         // 设备 ID (U16)
     quint8 byBatVal;        // 电量值
     PosQuality byPosQuality;    // 位置质量
+    quint8 byStarNum;       // 卫星数量
     double lng;              // 经度
     double lat;              // 纬度
 };
@@ -34,6 +35,9 @@ public:
     bool unpack(const QByteArray &fullPacket) override;
 
     void Print();
+
+    const QList<CabinetData>& getCabinetData() { return m_cabinetList;}
+    const QList<ShoeData>& getShoeData() { return m_shoeList;}
 
 private:
     quint8 m_byCabinetNum;     // 铁鞋柜数量
