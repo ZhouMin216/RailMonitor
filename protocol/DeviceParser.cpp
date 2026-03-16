@@ -1,9 +1,56 @@
 #include "DeviceParser.h"
 #include <QDebug>
 
+// DeviceStatus -> string
+QString EnumtoString(DeviceStatus status) {
+    switch (status) {
+    case DeviceStatus::Offline: return QStringLiteral("离线");
+    case DeviceStatus::Online:  return QStringLiteral("在线");
+    case DeviceStatus::InCabinet:  return QStringLiteral("在柜");
+    case DeviceStatus::Unregister:  return QStringLiteral("未注册");
+    case DeviceStatus::NoEnter:  return QStringLiteral("未录入");
+    default: return QStringLiteral("未知");
+    }
+}
+// CabinetStatus -> string
+QString EnumtoString(CabinetStatus status) {
+    switch (status) {
+    case CabinetStatus::Offline: return QStringLiteral("离线");
+    case CabinetStatus::Online:  return QStringLiteral("在线");
+    case CabinetStatus::Unregister:  return QStringLiteral("未注册");
+    case CabinetStatus::NoEnter:  return QStringLiteral("未录入");
+    default: return QStringLiteral("未知");
+    }
+}
+// StorageStatus -> string
+QString EnumtoString(StorageStatus status) {
+    switch (status) {
+    case StorageStatus::Offline: return QStringLiteral("铁鞋离位");
+    case StorageStatus::Online:  return QStringLiteral("铁鞋在位");
+    case StorageStatus::Unusual:  return QStringLiteral("异常");
+    default: return "未知";
+    }
+}
+// PosQuality -> string
+QString EnumtoString(PosQuality quality) {
+    switch (quality) {
+    case NoPos:           return QStringLiteral("无定位");
+    case SinglepointPos:  return QStringLiteral("单点定位");
+    case DiffPos:         return QStringLiteral("差分定位");
+    case PPSpos:          return QStringLiteral("PPS定位");
+    case RTKfixed:        return QStringLiteral("RTK固定");
+    case RTKfloating:     return QStringLiteral("RTK浮点");
+    default:              return QStringLiteral("未知");
+    }
+}
+
 double convertDmToDecimal(qint16 degrees, qint32 minutes) {
     // return degrees + minutes / 60.0;
-    return degrees + minutes / 10000000.0;
+    QString tmp = QString("0.%1").arg(minutes);
+    qDebug() << " ================= tmp " <<  tmp  << " ------------------ ";
+    float value = tmp.toDouble();
+    // return degrees + minutes / 10000000.0;
+    return degrees + value;
 }
 
 DeviceParser::DeviceParser(quint16 deviceId)
@@ -67,6 +114,10 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
             return false;
         }
         offset += 2;
+
+        // 读取设备在线状态
+        cabinet.byOnline = static_cast<DeviceStatus>(m_abyData[offset++]);
+
         // 读取仓位数
         cabinet.byStoreNum = static_cast<quint8>(m_abyData[offset++]);
 
@@ -93,6 +144,10 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
             return false;
         }
         offset += 2;
+
+        // 读取设备在线状态
+        shoe.byOnline = static_cast<DeviceStatus>(m_abyData[offset++]);
+
         // 读取电量值
         shoe.byBatVal = static_cast<quint8>(m_abyData[offset++]);
         // 读取位置质量
@@ -112,6 +167,7 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         }
         offset += 4;
         shoe.lng = convertDmToDecimal(LngDegree, LngMinutes);
+        qDebug() << " ================= shoe.lng " << QString::number(shoe.lng, 'f', 6) << "  LngMinutes= " <<LngMinutes << " ------------------ ";
 
         quint16 LatDegree = 0;
         if (!LittleEndianReader::tryReadUInt16(m_abyData, offset, LatDegree)) {
@@ -126,6 +182,7 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         }
         offset += 4;
         shoe.lat = convertDmToDecimal(LatDegree, LatMinutes);
+        qDebug() << " ================= shoe.lat " <<  QString::number(shoe.lat, 'f', 6) << "  LatMinutes= " <<LatMinutes << " ------------------ ";
 
         m_shoeList.append(shoe);
         cnt++;

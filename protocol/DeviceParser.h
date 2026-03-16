@@ -4,14 +4,33 @@
 #include "ProtocolPacket.h"
 #include <QList>
 
-enum CabinetStatus{Unusual = 0x00, Offline = 0x01, Online = 0x02};
+// 铁鞋状态
+enum class DeviceStatus{Offline = 0x00, Online = 0x01, InCabinet = 0x02, Unregister = 0x03, NoEnter = 0x04};
+// 鞋柜状态
+enum class CabinetStatus{Offline = 0x00, Online = 0x01, Unregister = 0x02, NoEnter = 0x04};
+// 鞋柜仓位状态
+enum class StorageStatus{Unusual = 0x00, Offline = 0x01, Online = 0x02};
 enum PosQuality{
     NoPos = 0x00, SinglepointPos = 0x01, DiffPos = 0x02,
-    PPSpos = 0x03, RTKfixed = 0x04, RTKfloating = 0x05 // RTKfloating 定位质量最好
+    PPSpos = 0x03, RTKfixed = 0x04, RTKfloating = 0x05 // RTKfixed 定位质量最好
 };
+
+// DeviceStatus -> string
+QString EnumtoString(DeviceStatus status);
+
+// CabinetStatus -> string
+QString EnumtoString(CabinetStatus status);
+
+// StorageStatus -> string
+QString EnumtoString(StorageStatus status);
+
+// PosQuality -> string
+QString EnumtoString(PosQuality quality);
+
 // 铁鞋数据结构体
 struct ShoeData {
     quint16 wDevID;         // 设备 ID (U16)
+    DeviceStatus byOnline; // 在线状态
     quint8 byBatVal;        // 电量值
     PosQuality byPosQuality;    // 位置质量
     quint8 byStarNum;       // 卫星数量
@@ -22,9 +41,11 @@ struct ShoeData {
 // 柜子数据结构体
 struct CabinetData {
     quint16 wDevID;        // 设备 ID (U16)
+    DeviceStatus byOnline; // 在线状态
     quint8 byStoreNum;     // 仓位数
     QByteArray abyStatus;  // 仓位状态数组
 };
+
 
 class DeviceParser : public ProtocolPacket
 {

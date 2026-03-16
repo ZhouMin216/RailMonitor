@@ -290,7 +290,7 @@ void MainWindow::updateNetworkStatus(NetworkManager::ConnectionState state) {
         statusLabel->setStyleSheet("color: green; font-weight: bold; padding: 4px 8px;");
         {
             // 连接成功后主动发送时间同步给基站
-            qint64 secs = QDateTime::currentSecsSinceEpoch();
+            // qint64 secs = QDateTime::currentSecsSinceEpoch();
             // qDebug() << "Unix timestamp (seconds):" << secs;
             // QDateTime localTime = QDateTime::fromSecsSinceEpoch(secs);
             // qDebug() << "Local time:" << localTime.toString("yyyy-MM-dd HH:mm:ss");

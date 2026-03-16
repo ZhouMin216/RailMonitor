@@ -18,7 +18,9 @@ QByteArray WhitelistSync::pack() const
     stream << quint8(static_cast<quint8>(PC_END));
     stream << m_byDevID;
     stream << quint8(static_cast<quint8>(DT_WHITE_LIST_CONFIG));
-    stream << quint16(static_cast<quint16>(m_whiteList.size()));
+    stream << quint16(static_cast<quint16>(m_whiteList.size() * 4 + 1)); // 数据长度 字节数 +1 是白名单个数字节
+
+    stream << quint8(static_cast<quint8>(m_whiteList.size()));  // 白名单数量个数
     for(const auto& item : m_whiteList){
         stream << item;
     }

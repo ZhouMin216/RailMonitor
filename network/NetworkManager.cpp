@@ -80,7 +80,7 @@ void NetworkManager::startDiscovery() {
     setState(Discovering);
     m_discoveryTimeoutTimer->start(DISCOVERY_TIMEOUT_MS);
 
-    QByteArray msg = "DISCOVER_SERVER";
+    QByteArray msg = "HZQYSWSJ_DISCOVER";
     bool sentAtLeastOne = false;
 
     // 遍历所有网络接口
@@ -160,10 +160,11 @@ void NetworkManager::onUdpReadyRead() {
         datagram.resize(m_udpSocket->pendingDatagramSize());
         m_udpSocket->readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
 
-        // 假设服务器回复格式为 "SERVER_RESPONSE:PORT"
-        if (datagram.startsWith("SERVER_RESPONSE:")) {
+        // 假设服务器回复格式为 "HZQYSWSJ_RESPONSE:PORT"
+        QString start_msg = "HZQYSWSJ_RESPONSE:";
+        if (datagram.startsWith("HZQYSWSJ_RESPONSE:")) {
             bool ok;
-            int port = datagram.mid(16).toInt(&ok);
+            int port = datagram.mid(start_msg.size()).toInt(&ok);
             if (ok && port > 0 && port < 65536) {
                 QString ip = sender.toString();
                 qDebug() << "Server discovered via broadcast at" << ip << ":" << port;

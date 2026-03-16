@@ -102,6 +102,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     // savedFencePoints = DatabaseManager::loadGeoFence();
 
     drawAll();
+    // drawShoeCabinet();
 }
 
  void RailMapViewerWidget::loadGeoFence()
@@ -221,16 +222,17 @@ void RailMapViewerWidget::loadConfig() {
         buildings_.append(newBuilding);
     }
 
-    // const QJsonArray& shoeCabinetArray = root["shoeCabinets"].toArray();
-    // for (const QJsonValue &val : shoeCabinetArray) {
-    //     if (val.isObject()) {
-    //         QJsonObject p = val.toObject();
-    //         QString name = p["name"].toString();
-    //         double lng = p["lng"].toDouble();
-    //         double lat = p["lat"].toDouble();
-    //         shoeCabinetPoints[name] = QPointF(lat,lng);
-    //     }
-    // }
+    const QJsonArray& shoeCabinetArray = root["shoeCabinets"].toArray();
+    for (const QJsonValue &val : shoeCabinetArray) {
+        if (val.isObject()) {
+            QJsonObject p = val.toObject();
+            quint16 id = p["id"].toInt();
+            // QString name = p["name"].toString();
+            double lng = p["lng"].toDouble();
+            double lat = p["lat"].toDouble();
+            shoeCabinetPoints[id] = QPointF(lat,lng);
+        }
+    }
 
     // 4. 更新全局边界变量
     // if (hasValidCoord) {
@@ -292,12 +294,13 @@ QPointF RailMapViewerWidget::pixelToGeo(qreal x, qreal y) {
 }
 
 void RailMapViewerWidget::drawAll() {
+    qDebug() << "------------- draw all ------------------------";
     scene->clear();
     drawTracks();
     drawBuildings();
     // drawViaPoints();
     drawFence();
-    // drawShoeCabinet();
+    drawShoeCabinet();
 
     return;
     // 旋转视图
@@ -468,14 +471,22 @@ void RailMapViewerWidget::drawFence() {
 
 void RailMapViewerWidget::drawShoeCabinet(){
     shoeCabinet.clear();
-    for (QMap<QString, QPointF>::const_iterator it = shoeCabinetPoints.constBegin();
+    for (QMap<quint16, QPointF>::const_iterator it = shoeCabinetPoints.constBegin();
          it != shoeCabinetPoints.constEnd(); ++it) {
-        QString name = it.key();
+        QString name = QString("鞋柜%1").arg(it.key());
+        // QString name = it.key();
         QPointF pt = it.value();
         ShoeCabinetItem *marker = new ShoeCabinetItem(name, pt.x(), pt.y(), scene, this);
-        shoeCabinet[name] = marker;
+        shoeCabinet[it.key()] = marker;
         scene->addItem(marker);
     }
+
+    // for (QMap<quint16,ShoeCabinetItem*>::const_iterator it = shoeCabinet.constBegin();
+    //      it != shoeCabinet.constEnd(); ++it) {
+    //     ShoeCabinetItem *marker = it.value();
+    //     if (marker && marker->scene() != scene)
+    //     scene->addItem(marker);
+    // }
 }
 
 void RailMapViewerWidget::updateFencePreview() {
@@ -502,15 +513,6 @@ void RailMapViewerWidget::updateFencePreview() {
 }
 
 void RailMapViewerWidget::finishFenceDrawing() {
-    // test
-    for (QMap<QString, ShoeCabinetItem*>::const_iterator it = shoeCabinet.constBegin();
-         it != shoeCabinet.constEnd(); ++it) {
-        QString name = it.key();
-        ShoeCabinetItem* Cabinet = it.value();
-        qDebug() << name << " " << Cabinet->Name();
-    }
-    //
-
     if (currentFencePoints.size() < 3) {
         QMessageBox::warning(this, "警告", "围栏至少需要3个点！");
         return;
@@ -543,17 +545,42 @@ void RailMapViewerWidget::clearFence() {
 
 void RailMapViewerWidget::updateCabinets(const QList<CabinetData>& data)
 {
-
+    qDebug() << "RailMapViewerWidget::updateCabinets  " << data.size();
+    for(const auto& cabinet : data)
+    {
+        if (shoeCabinet.contains(cabinet.wDevID))
+        {
+            qDebug() << " ShoeCabinetItem update  " << data.size();
+            shoeCabinet[cabinet.wDevID]->updateData(cabinet);
+        } /*else
+        {
+            qDebug() << " DeviceMarkerItem create  " << data.size();
+            DeviceMarkerItem *marker = new DeviceMarkerItem(shoe, scene, this);
+            shoeMap[shoe.wDevID] = marker;
+            scene->addItem(marker);
+        }*/
+        qDebug() << "wDevID: " << cabinet.wDevID
+                 << " byStoreNum: " << cabinet.byStoreNum
+                 << " abyStatus: " << cabinet.abyStatus.toHex(' ').toUpper();
+    }
 }
 
 void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
 {
-    qDebug() << "updateShoes called in thread:" << QThread::currentThread();
-    qDebug() << "RailMapViewerWidget lives in thread:" << this->thread();
-
     qDebug() << "RailMapViewerWidget::updateShoes  " << data.size();
-    for(const auto& shoe:data)
+    for( auto shoe:data)
     {
+        if (!savedFencePoints.isEmpty()) {
+            // 确保不超过地图经纬度的极值
+            shoe.lng = qBound(minLng, shoe.lng, maxLng);
+            shoe.lat = qBound(minLat, shoe.lat, maxLat);
+            QPointF pt(shoe.lng, shoe.lat);
+            if (!pointInPolygon(pt, savedFencePoints)) {
+                QMessageBox::warning(this, "警告", QString("铁鞋%1超出电子围栏！").arg(shoe.wDevID));
+                // return;
+            }
+        }
+
         // QMap<quint16, DeviceMarkerItem*> shoeMap;
         if (shoeMap.contains(shoe.wDevID))
         {
@@ -584,6 +611,10 @@ void RailMapViewerWidget::add_user_marker() {
     bool ok1, ok2;
     double lng = lngInput->text().toDouble(&ok1);
     double lat = latInput->text().toDouble(&ok2);
+
+    lng = qBound(minLng, lng, maxLng);
+    lat = qBound(minLat, lat, maxLat);
+
     if (!ok1 || !ok2) {
         QMessageBox::critical(this, "错误", "请输入有效的经纬度！");
         return;
@@ -596,7 +627,7 @@ void RailMapViewerWidget::add_user_marker() {
     if (!savedFencePoints.isEmpty()) {
         QPointF pt(lng, lat);
         if (!pointInPolygon(pt, savedFencePoints)) {
-            QMessageBox::warning(this, "警告", "该坐标不在电子围栏范围内！");
+            QMessageBox::warning(this, "警告", QString("铁鞋%1超出电子围栏！").arg(lng));
             // return;
         }
     }
@@ -667,10 +698,10 @@ DeviceMarkerItem::DeviceMarkerItem(const QString &name, double lat, double lon, 
     setPos(px.x(), px.y());
 
     // 初始化模拟参数 (示例数据)
-    simulatedParams["温度"] = 25.5;
-    simulatedParams["电压"] = 12.3;
-    simulatedParams["状态"] = "运行中";
-    simulatedParams["信号强度"] = 85;
+    simulatedParams["设备ID"] = devID;
+    simulatedParams["电量值"] = 100;
+    simulatedParams["位置质量"] = 5;
+    simulatedParams["卫星数量"] = 2;
 }
 
 DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, RailMapViewerWidget *parent)
@@ -687,10 +718,11 @@ DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, 
     setPos(px.x(), px.y());
 
     // 初始化模拟参数 (示例数据)
-    simulatedParams["温度"] = 25.5;
-    simulatedParams["电压"] = 12.3;
-    simulatedParams["状态"] = "运行中";
-    simulatedParams["信号强度"] = 85;
+    simulatedParams["设备ID"] = shoeData.wDevID;
+    simulatedParams["在线状态"] = EnumtoString(shoeData.byOnline);
+    simulatedParams["电量值"] = shoeData.byBatVal;
+    simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
+    simulatedParams["卫星数量"] = shoeData.byStarNum;
 }
 
 void DeviceMarkerItem::setupUI()
@@ -717,6 +749,14 @@ void DeviceMarkerItem::updateData(const ShoeData& data)
     latitude = shoeData.lat;
     longitude = shoeData.lng;
 
+    shoeData = data;
+    simulatedParams.clear();
+    simulatedParams["设备ID"] = shoeData.wDevID;
+    simulatedParams["在线状态"] = EnumtoString(shoeData.byOnline);
+    simulatedParams["电量值"] = shoeData.byBatVal;
+    simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
+    simulatedParams["卫星数量"] = shoeData.byStarNum;
+
     // 设置组的坐标 (相对于场景)
     QPointF px = parentWidget->geoToPixel(data.lng, data.lat);
     setPos(px.x(), px.y());
@@ -733,20 +773,6 @@ void DeviceMarkerItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {
         // 使用 QTimer::singleShot 延迟显示对话框
         isShowingDetails = true;
         QTimer::singleShot(0, [this]() {
-            /*
-            // 构建信息字符串
-            QString info = QString("设备名称: %1\n").arg(deviceName);
-            info += QString("经度: %1\n").arg(longitude, 0, 'f', 6);
-            info += QString("纬度: %1\n").arg(latitude, 0, 'f', 6);
-            info += "\n模拟参数:\n";
-
-            for (auto it = simulatedParams.constBegin(); it != simulatedParams.constEnd(); ++it) {
-                info += QString("%1: %2\n").arg(it.key()).arg(it.value().toString());
-            }
-
-            // 显示对话框
-            QMessageBox::information(nullptr, "设备属性", info);
-            */
             DeviceDetailsDialog dialog(deviceName, latitude, longitude, simulatedParams, nullptr);
             dialog.exec(); // 模态显示，无系统声音
 
@@ -759,8 +785,43 @@ void DeviceMarkerItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 
 ShoeCabinetItem::ShoeCabinetItem(const QString &name, double lat, double lon, QGraphicsScene *scene, RailMapViewerWidget *parent)
     : deviceName(name), latitude(lat), longitude(lon), parentWidget(parent) {
+    cabinetData.wDevID = 0;
+    setupUI();
 
-    // 创建椭圆
+    // 设置组的坐标 (相对于场景)
+    QPointF px = parentWidget->geoToPixel(lon, lat);
+    setPos(px.x(), px.y());
+
+    // 初始化模拟参数 (示例数据)
+    simulatedParams["设备ID"] = cabinetData.wDevID;
+    simulatedParams["仓位数"] = 6;
+    simulatedParams["仓位状态"] = "未知";
+    simulatedParams["在线状态"] = "未知";
+}
+
+void ShoeCabinetItem::updateData(const CabinetData& data)
+{
+    cabinetData = data;
+    simulatedParams.clear();
+    simulatedParams["设备ID"] = cabinetData.wDevID;
+    simulatedParams["仓位数"] = cabinetData.byStoreNum;
+    // simulatedParams["在线状态"] = static_cast<quint8>(cabinetData.byOnline);
+    simulatedParams["在线状态"] = EnumtoString(cabinetData.byOnline);
+    if (cabinetData.byStoreNum == 0)
+        simulatedParams["仓位状态"] = "未知";
+    else {
+        for (int i = 0; i < cabinetData.abyStatus.size(); ++i) {
+            StorageStatus value = static_cast<StorageStatus>(cabinetData.abyStatus.at(i)); // 推荐用 at() 避免写时复制
+            QString key = QString("仓位%1状态").arg(i);
+            // simulatedParams[key] = value;
+            simulatedParams[key] = EnumtoString(value);
+        }
+    }
+}
+
+void ShoeCabinetItem::setupUI()
+{
+    // 创建矩形
     QGraphicsRectItem *rect = new QGraphicsRectItem(-4, -4, 16, 16);
     rect->setPen(QPen(Qt::darkGreen, 2));
     rect->setBrush(Qt::green);
@@ -768,23 +829,13 @@ ShoeCabinetItem::ShoeCabinetItem(const QString &name, double lat, double lon, QG
     rect->setFlag(QGraphicsItem::ItemIsFocusable); // 启用焦点
 
     // 创建文本
-    QGraphicsTextItem *text = new QGraphicsTextItem(name);
-    text->setDefaultTextColor(Qt::black); // 可选：设置文字颜色
+    QGraphicsTextItem *text = new QGraphicsTextItem(deviceName);
+    text->setDefaultTextColor(Qt::green); // 可选：设置文字颜色
     text->setPos(5, -5); // 相对于矩形的位置
 
     // 将子项添加到组中
     addToGroup(rect);
     addToGroup(text);
-
-    // 设置组的坐标 (相对于场景)
-    QPointF px = parentWidget->geoToPixel(lon, lat);
-    setPos(px.x(), px.y());
-
-    // 初始化模拟参数 (示例数据)
-    simulatedParams["温度"] = 25.5;
-    simulatedParams["铁鞋容量"] = 8;
-    simulatedParams["状态"] = "运行中";
-    simulatedParams["信号强度"] = 85;
 }
 
 void ShoeCabinetItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {
@@ -818,11 +869,11 @@ DeviceDetailsDialog::DeviceDetailsDialog(const QString &name, double lat, double
 
     QString info = QString("<b>设备名称:</b> %1<br>").arg(name);
     info += QString("<b>经度:</b> %1<br>").arg(lon, 0, 'f', 6);
-    info += QString("<b>纬度:</b> %1<br><br>").arg(lat, 0, 'f', 6);
-    info += "<b>模拟参数:</b><br>";
+    info += QString("<b>纬度:</b> %1<br>").arg(lat, 0, 'f', 6);
+    // info += "<b>模拟参数:</b><br>";
 
     for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
-        info += QString("%1: %2<br>").arg(it.key()).arg(it.value().toString());
+        info += QString("<b>%1:</b> %2<br>").arg(it.key()).arg(it.value().toString());
     }
 
     infoLabel = new QLabel(info);

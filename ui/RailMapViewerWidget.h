@@ -76,10 +76,10 @@ private:
 
     QMap<QString, QPointF> viaPoints;
     QMap<QString, QPointF> buildPoints;
-    QMap<QString, QPointF> shoeCabinetPoints;
+    QMap<quint16, QPointF> shoeCabinetPoints;
     QList<QVariantMap> tracks;
     QList<QVariantMap> buildings;
-    QMap<QString,ShoeCabinetItem*> shoeCabinet;
+    QMap<quint16,ShoeCabinetItem*> shoeCabinet;
     QMap<quint16, DeviceMarkerItem*> shoeMap;
 
     QList<RailTrack> railTracks_;
@@ -124,7 +124,6 @@ private:
     RailMapViewerWidget *parentWidget; // 用于调用父窗口的槽函数
     ShoeData shoeData;
 
-    // 模拟参数 (可以扩展)
     QMap<QString, QVariant> simulatedParams;
 private:
     bool isShowingDetails = false;
@@ -137,14 +136,18 @@ public:
     // 重写 mousePressEvent 以响应点击
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
 
-    // test
-    const QString& Name(){return deviceName; }
+    void updateData(const CabinetData& data);
+    const quint16& getDevID(){return cabinetData.wDevID; }
+
+private:
+    void setupUI();
 
 private:
     QString deviceName;
     double latitude;
     double longitude;
     RailMapViewerWidget *parentWidget; // 用于调用父窗口的槽函数
+    CabinetData cabinetData;
 
     // 模拟参数 (可以扩展)
     QMap<QString, QVariant> simulatedParams;
