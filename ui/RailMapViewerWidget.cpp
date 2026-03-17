@@ -130,20 +130,6 @@ void RailMapViewerWidget::loadConfig() {
     }
     QJsonObject root = doc.object();
 
-    // 用于计算边界的临时变量
-    // bool hasValidCoord = false;
-    // double minLatVal = 90.0, maxLatVal = -90.0;
-    // double minLngVal = 180.0, maxLngVal = -180.0;
-
-    // auto updateBounds = [&](double lng, double lat) {
-    //     hasValidCoord = true;
-    //     if (lat < minLatVal) minLatVal = lat;
-    //     if (lat > maxLatVal) maxLatVal = lat;
-    //     if (lng < minLngVal) minLngVal = lng;
-    //     if (lng > maxLngVal) maxLngVal = lng;
-    // };
-
-
     railTracks_.clear();
     const QJsonArray& tracksArray = root["tracks"].toArray();
     for (const QJsonValue &val : tracksArray) {
@@ -234,24 +220,6 @@ void RailMapViewerWidget::loadConfig() {
         }
     }
 
-    // 4. 更新全局边界变量
-    // if (hasValidCoord) {
-    //     minLat = minLatVal;
-    //     maxLat = maxLatVal;
-    //     minLng = minLngVal;
-    //     maxLng = maxLngVal;
-
-    //     // 防止跨度为0导致除零错误或缩放异常
-    //     latSpan = qMax(maxLat - minLat, 1e-8);
-    //     lngSpan = qMax(maxLng - minLng, 1e-8);
-    // } else {
-    //     // 默认值处理
-    //     minLat = maxLat = 0.0;
-    //     minLng = maxLng = 0.0;
-    //     latSpan = lngSpan = 1.0;
-    // }
-    // return;
-
     if (railTracks_.isEmpty() || buildings_.isEmpty()) return;
 
     minLat = maxLat = buildings_.first().points.first().y();
@@ -273,9 +241,6 @@ void RailMapViewerWidget::loadConfig() {
     for(const auto &build :buildings_){
         for (const QPointF &pt : build.points) updateBounds(pt);
     }
-
-    // for (const QPointF &pt : viaPoints) updateBounds(pt);
-    // for (const QPointF &pt : buildPoints) updateBounds(pt);
 
     latSpan = qMax(maxLat - minLat, 1e-8);
     lngSpan = qMax(maxLng - minLng, 1e-8);
@@ -301,86 +266,6 @@ void RailMapViewerWidget::drawAll() {
     // drawViaPoints();
     drawFence();
     drawShoeCabinet();
-
-    return;
-    // 旋转视图
-    QRectF sceneRect = scene->itemsBoundingRect();
-
-    if (sceneRect.isEmpty()) {
-        return; // 如果没有内容，直接返回
-    }
-
-    // B. 定义旋转角度
-    double angle = -24.0;
-
-    // C. 创建变换矩阵 (QTransform)
-    QTransform transform;
-
-    // 核心技巧：绕着场景的中心点旋转，而不是绕着 (0,0)
-    QPointF center = sceneRect.center();
-
-    // 1. 将中心点移到原点
-    transform.translate(center.x(), center.y());
-    // 2. 执行旋转
-    transform.rotate(angle);
-    // 3. 移回原位置 (注意：这里移回的是原来的中心坐标)
-    transform.translate(-center.x(), -center.y());
-
-    // D. 应用变换到 View
-    view->setTransform(transform);
-
-    // E. 【最重要的一步】重新计算旋转后的实际包围盒，并强制缩放视图
-    // 当应用了 setTransform 后，scene->itemsBoundingRect() 返回的仍然是逻辑坐标（未旋转的）
-    // 我们需要用 transform.mapRect() 获取旋转后的物理包围盒
-    QRectF rotatedRect = transform.mapRect(sceneRect);
-
-    // // 强制视图适应这个旋转后的新矩形，这会自动去除滚动条
-    // view->fitInView(rotatedRect, Qt::KeepAspectRatio);
-
-    // 可选：设置一点边距，防止内容紧贴边缘
-    // view->fitInView(rotatedRect.adjusted(-10, -10, 10, 10), Qt::KeepAspectRatio);
-
-    // plan b
-    // A. 获取视图当前的大小 (可视区域)
-    QSize viewSize = view->viewport()->size();
-
-    // B. 计算原始内容的大小 (未旋转前的宽高)
-    // qreal contentWidth = sceneRect.width();
-    // qreal contentHeight = sceneRect.height();
-
-    // C. 设定一个“填充系数” (Padding Factor)
-    // 0.9 表示内容占视图的 90%，留 10% 边距
-    // 如果觉得还是太小，可以调大到 0.95 或 0.98
-    double paddingFactor = 1.9;
-
-    // D. 计算需要的缩放比例 (Scale)
-    // 逻辑：让内容的宽/高 (取较小比例的那个) 刚好占满视图宽/高的 paddingFactor
-    // qreal scaleX = (viewSize.width() * paddingFactor) / contentWidth;
-    // qreal scaleY = (viewSize.height() * paddingFactor) / contentHeight;
-
-    qreal scaleX = (viewSize.width() * paddingFactor) / rotatedRect.width();
-    qreal scaleY = (viewSize.height() * paddingFactor) / rotatedRect.height();
-
-    // 选择较小的缩放比例，确保内容完全在视野内 (Keep Aspect Ratio)
-    qreal finalScale = std::min(scaleX, scaleY);
-
-    // E. 应用缩放
-    // 注意：setTransform 会覆盖之前的变换，所以要把 旋转 + 缩放 组合起来
-    QTransform finalTransform = transform;
-    finalTransform.scale(finalScale, finalScale);
-
-    // 重新应用组合后的变换 (先旋转，再缩放)
-    // 注意：矩阵乘法顺序很重要。通常我们希望先旋转，再以新的尺度显示。
-    // 但在这里，我们是在 view 层级操作。
-    // 更稳妥的方式是：先设旋转，再 scale view 的 matrix
-
-    view->setTransform(transform); // 先恢复纯旋转状态
-    view->scale(finalScale, finalScale); // 在此基础上缩放
-
-    // F. 居中视图
-    // 现在内容可能不在中心，因为缩放和旋转改变了坐标映射
-    // 我们直接将视图的中心点设置场景的中心点
-    view->centerOn(center);
 }
 
 void RailMapViewerWidget::drawTracks() {
@@ -480,13 +365,6 @@ void RailMapViewerWidget::drawShoeCabinet(){
         shoeCabinet[it.key()] = marker;
         scene->addItem(marker);
     }
-
-    // for (QMap<quint16,ShoeCabinetItem*>::const_iterator it = shoeCabinet.constBegin();
-    //      it != shoeCabinet.constEnd(); ++it) {
-    //     ShoeCabinetItem *marker = it.value();
-    //     if (marker && marker->scene() != scene)
-    //     scene->addItem(marker);
-    // }
 }
 
 void RailMapViewerWidget::updateFencePreview() {
@@ -822,20 +700,20 @@ void ShoeCabinetItem::updateData(const CabinetData& data)
 void ShoeCabinetItem::setupUI()
 {
     // 创建矩形
-    QGraphicsRectItem *rect = new QGraphicsRectItem(-4, -4, 16, 16);
-    rect->setPen(QPen(Qt::darkGreen, 2));
+    QGraphicsRectItem *rect = new QGraphicsRectItem(-2, -2, 4, 4);
+    rect->setPen(QPen(Qt::darkGreen, 1));
     rect->setBrush(Qt::green);
     rect->setFlag(QGraphicsItem::ItemIsSelectable); // 启用选择
     rect->setFlag(QGraphicsItem::ItemIsFocusable); // 启用焦点
 
     // 创建文本
-    QGraphicsTextItem *text = new QGraphicsTextItem(deviceName);
-    text->setDefaultTextColor(Qt::green); // 可选：设置文字颜色
-    text->setPos(5, -5); // 相对于矩形的位置
+    // QGraphicsTextItem *text = new QGraphicsTextItem(deviceName);
+    // text->setDefaultTextColor(Qt::green); // 可选：设置文字颜色
+    // text->setPos(5, -5); // 相对于矩形的位置
 
     // 将子项添加到组中
     addToGroup(rect);
-    addToGroup(text);
+    // addToGroup(text);
 }
 
 void ShoeCabinetItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {

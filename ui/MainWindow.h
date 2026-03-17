@@ -11,6 +11,7 @@
 #include "NetworkConfigPage.h"
 #include "network/NetworkManager.h"
 #include "database/DatabaseManager.h"
+#include "DeviceManager.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -39,6 +40,8 @@ private:
     NetworkManager *networkManager;
     DatabaseManager *m_databaseManager;
     QLabel *statusLabel; // 用于显示状态
+
+    DeviceManager* device_mgr_;
 
     QPushButton *mapBtn, *tieShoeBtn, *cabinetBtn, *netBtn, *exitBtn;
 };

@@ -18,6 +18,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_databaseManager = new DatabaseManager(this);
     qDebug() << "3. MainWindow created:" << timer.elapsed() << "ms";
 
+    device_mgr_ = new DeviceManager(this);
+    device_mgr_->loadConfig();
+    qDebug() << "3.5 MainWindow created:" << timer.elapsed() << "ms";
+
     setupUI();
     qDebug() << "4. MainWindow created:" << timer.elapsed() << "ms";
     setupStatusBar(); // 新增状态栏
