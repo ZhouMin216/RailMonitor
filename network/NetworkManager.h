@@ -40,7 +40,6 @@ public slots:
 signals:
     void stateChanged(ConnectionState state);
     void serverDiscovered(const QString &ip, int port);
-    void tcpMessageReceived(const QByteArray &data);
     void errorOccurred(const QString &error);
     void timeSyncReceived(quint32 unixTime, quint16 deviceId);
     void cabinetData(const QList<CabinetData>& data);

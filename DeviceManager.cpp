@@ -8,14 +8,30 @@
 
 IconShoe::IconShoe(quint16 id, quint16 cabinet_id, quint8 store_id)
     : shoe_id_(id), cabinet_id_(cabinet_id), store_id_(store_id) {
-
+    shoeData_.wDevID = shoe_id_;
 }
 
 ShoeCabinet::ShoeCabinet(quint16 id, quint8 store_num, QPointF pos)
     : cabinet_id_(id), store_num_(store_num), pos_(pos){
-
+    initStoreStatus();
 }
 
+void ShoeCabinet::initStoreStatus(){
+    data_.byStoreNum = store_num_;
+
+    data_.abyStatus.resize(store_num_);
+    data_.abyStatus.fill(static_cast<quint8>(StorageStatus::Unregister));
+}
+
+QVector<quint16> ShoeCabinet::GetStoreShoeID(){
+    QVector<quint16> id_vec;
+    for (auto it = store_map_.constBegin(); it != store_map_.constEnd(); ++it) {
+        auto shoe = it.value();
+        if (!shoe) continue;
+        id_vec.push_back(shoe->GetShoeID());
+    }
+    return id_vec;
+}
 
 DeviceManager::DeviceManager(QObject *parent)
     : QObject(parent){
@@ -42,7 +58,7 @@ void DeviceManager::loadConfig(){
         return;
     }
 
-    cabiner_Map_.clear();
+    cabinet_Map_.clear();
     shoe_map_.clear();
     QJsonObject root = doc.object();
 
@@ -89,13 +105,13 @@ void DeviceManager::loadConfig(){
             }
         }
 
-        if (cabiner_Map_.contains(cabinet_id)){
+        if (cabinet_Map_.contains(cabinet_id)){
             QMessageBox::critical(nullptr, tr("错误"), tr("铁鞋柜ID重复：") + QString("%1").arg(cabinet_id));
             return;
         }
-        cabiner_Map_[cabinet_id] = cabinet;
+        cabinet_Map_[cabinet_id] = cabinet;
 
         // shoeCabinetPoints[id] = QPointF(lat,lng);
     }
-    qDebug() << "Cabinet size: " << cabiner_Map_.size() << " shoe_map_ size" << shoe_map_.size() ;
+    qDebug() << "Cabinet size: " << cabinet_Map_.size() << " shoe_map_ size" << shoe_map_.size() ;
 }

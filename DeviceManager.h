@@ -14,6 +14,7 @@ public:
     const ShoeData& GetShoeData() { return shoeData_;}
     void SetData(const ShoeData& data) { shoeData_ = data;}
     quint16 GetCabinetID() { return cabinet_id_;}
+    quint16 GetShoeID() { return shoe_id_;}
     quint8 GetStoreID() { return store_id_;}
 
 private:
@@ -35,11 +36,16 @@ public:
     void AddIconShoe(quint8 store_idx, std::shared_ptr<IconShoe> shoe){
         store_map_[store_idx] = shoe;
     }
+    const QPointF& GetPos() { return pos_;}
+    QVector<quint16> GetStoreShoeID();
+private:
+    void initStoreStatus();
 
 private:
     quint16 cabinet_id_; // 鞋柜ID
     CabinetData data_;
     quint8 store_num_; // 仓位数量
+    QVector<quint16> store_shoe_id_; // 仓位存储的铁鞋id
     QMap<quint8, std::shared_ptr<IconShoe>> store_map_; // key是仓位序号 1~N
 
     QPointF pos_; // 经纬度
@@ -53,11 +59,21 @@ class DeviceManager: public QObject
 public:
     explicit DeviceManager(QObject *parent = nullptr);
     ~DeviceManager();
+    void updateCabinet() {
+        emit shoeCabinetUpdated(cabinet_Map_);
+    }
+    void updateIconShoe() {
+        emit iconShoeUpdated(shoe_map_);
+    }
 
     void loadConfig();
 
+signals:
+    void shoeCabinetUpdated(const QMap<quint16, std::shared_ptr<ShoeCabinet>>& data);
+    void iconShoeUpdated(const QMap<quint16, std::shared_ptr<IconShoe>>& data);
+
 private:
-    QMap<quint16, std::shared_ptr<ShoeCabinet>> cabiner_Map_;
+    QMap<quint16, std::shared_ptr<ShoeCabinet>> cabinet_Map_;
     QMap<quint16, std::shared_ptr<IconShoe>> shoe_map_;
 };
 

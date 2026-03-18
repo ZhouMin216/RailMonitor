@@ -27,12 +27,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setupStatusBar(); // 新增状态栏
     qDebug() << "5. MainWindow created:" << timer.elapsed() << "ms";
 
-    // connect(tcpClient, &TCPClient::messageReceived, this, &MainWindow::handleTcpMessage);
-    connect(cabinetPage, &ShoeCabinetPage::getShoeCabinetData, m_databaseManager, &DatabaseManager::handleGetCabinetData);
-    connect(m_databaseManager, &DatabaseManager::allShoeCabinetData, cabinetPage, &ShoeCabinetPage::handleIncomingShoeCabinetData);
-
-    connect(tieShoePage, &TieShoePage::getShoeData, m_databaseManager, &DatabaseManager::handleGetShoeData);
-    connect(m_databaseManager, &DatabaseManager::allShoeData, tieShoePage, &TieShoePage::handleIncomingShoeData);
+    connect(device_mgr_, &DeviceManager::shoeCabinetUpdated, cabinetPage, &ShoeCabinetPage::updateFromDeviceManager);
+    connect(device_mgr_, &DeviceManager::iconShoeUpdated, tieShoePage, &TieShoePage::updateFromDeviceManager);
 
     connect(mapPage, &RailMapViewerWidget::getGeoFence, m_databaseManager, &DatabaseManager::handleGetGeoFence);
     connect(mapPage, &RailMapViewerWidget::saveGeoFence, m_databaseManager, &DatabaseManager::handleSaveGeoFence);
@@ -57,20 +53,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     networkManager->startDiscovery();
     qDebug() << "8. MainWindow created:" << timer.elapsed() << "ms";
 
-    // 发送数据
-    // connect(this, &MainWindow::sendMessage, networkManager, &NetworkManager::sendTcpMessage);
-    // networkManager->sendTcpMessage("Hello Server");
-
-    // 接收数据
-    connect(networkManager, &NetworkManager::tcpMessageReceived, this, [](const QByteArray &data) {
-        qDebug() << "App received:" << data;
-    });
-
     mapPage->loadGeoFence();
     qDebug() << "9. MainWindow created:" << timer.elapsed() << "ms";
-    tieShoePage->reloadData();
     qDebug() << "10. MainWindow created:" << timer.elapsed() << "ms";
-    cabinetPage->reloadData();
+
+    device_mgr_->updateCabinet();
+    device_mgr_->updateIconShoe();
     qDebug() << "11. MainWindow created:" << timer.elapsed() << "ms";
 }
 

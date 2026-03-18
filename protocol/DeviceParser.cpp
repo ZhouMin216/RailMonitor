@@ -28,6 +28,7 @@ QString EnumtoString(StorageStatus status) {
     case StorageStatus::Offline: return QStringLiteral("铁鞋离位");
     case StorageStatus::Online:  return QStringLiteral("铁鞋在位");
     case StorageStatus::Unusual:  return QStringLiteral("异常");
+    case StorageStatus::Unregister: return QStringLiteral("未注册");
     default: return "未知";
     }
 }
@@ -116,7 +117,7 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         offset += 2;
 
         // 读取设备在线状态
-        cabinet.byOnline = static_cast<DeviceStatus>(m_abyData[offset++]);
+        cabinet.byOnline = static_cast<CabinetStatus>(m_abyData[offset++]);
 
         // 读取仓位数
         cabinet.byStoreNum = static_cast<quint8>(m_abyData[offset++]);
