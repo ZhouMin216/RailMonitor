@@ -9,26 +9,19 @@
 #include <QElapsedTimer>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    QElapsedTimer timer;
-    timer.start();
-
-     qDebug() << "1. MainWindow created:" << timer.elapsed() << "ms";
-    networkManager = new NetworkManager(this); // 新增
-     qDebug() << "2. MainWindow created:" << timer.elapsed() << "ms";
+    networkManager = new NetworkManager(this);
     m_databaseManager = new DatabaseManager(this);
-    qDebug() << "3. MainWindow created:" << timer.elapsed() << "ms";
 
     device_mgr_ = new DeviceManager(this);
     device_mgr_->loadConfig();
-    qDebug() << "3.5 MainWindow created:" << timer.elapsed() << "ms";
 
     setupUI();
-    qDebug() << "4. MainWindow created:" << timer.elapsed() << "ms";
-    setupStatusBar(); // 新增状态栏
-    qDebug() << "5. MainWindow created:" << timer.elapsed() << "ms";
+    setupStatusBar();
 
     connect(device_mgr_, &DeviceManager::shoeCabinetUpdated, cabinetPage, &ShoeCabinetPage::updateFromDeviceManager);
     connect(device_mgr_, &DeviceManager::iconShoeUpdated, tieShoePage, &TieShoePage::updateFromDeviceManager);
+    connect(networkManager, &NetworkManager::cabinetData, device_mgr_, &DeviceManager::updateCabinetStatus);
+    connect(networkManager, &NetworkManager::shoeData, device_mgr_, &DeviceManager::updateShoeStatus);
 
     connect(mapPage, &RailMapViewerWidget::getGeoFence, m_databaseManager, &DatabaseManager::handleGetGeoFence);
     connect(mapPage, &RailMapViewerWidget::saveGeoFence, m_databaseManager, &DatabaseManager::handleSaveGeoFence);
@@ -36,7 +29,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     connect(m_databaseManager, &DatabaseManager::geoFenceData, mapPage, &RailMapViewerWidget::handleIncomingFencePoint);
 
-    // 接入 NetworkManager
     connect(networkManager, &NetworkManager::stateChanged, this, &MainWindow::updateNetworkStatus);
     connect(networkManager, &NetworkManager::serverDiscovered, this, [this](const QString &ip, int port) {
         // 可选：提示用户已发现服务器
@@ -45,21 +37,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(networkManager, &NetworkManager::cabinetData, mapPage, &RailMapViewerWidget::updateCabinets);
     connect(networkManager, &NetworkManager::shoeData, mapPage, &RailMapViewerWidget::updateShoes);
 
-    qDebug() << "6. MainWindow created:" << timer.elapsed() << "ms";
     m_databaseManager->initDatabase();
-    qDebug() << "7. MainWindow created:" << timer.elapsed() << "ms";
 
     // 启动自动发现
     networkManager->startDiscovery();
-    qDebug() << "8. MainWindow created:" << timer.elapsed() << "ms";
 
     mapPage->loadGeoFence();
-    qDebug() << "9. MainWindow created:" << timer.elapsed() << "ms";
-    qDebug() << "10. MainWindow created:" << timer.elapsed() << "ms";
 
     device_mgr_->updateCabinet();
     device_mgr_->updateIconShoe();
-    qDebug() << "11. MainWindow created:" << timer.elapsed() << "ms";
 }
 
 void MainWindow::applyFlatStyle() {

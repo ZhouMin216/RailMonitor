@@ -430,13 +430,7 @@ void RailMapViewerWidget::updateCabinets(const QList<CabinetData>& data)
         {
             qDebug() << " ShoeCabinetItem update  " << data.size();
             shoeCabinet[cabinet.wDevID]->updateData(cabinet);
-        } /*else
-        {
-            qDebug() << " DeviceMarkerItem create  " << data.size();
-            DeviceMarkerItem *marker = new DeviceMarkerItem(shoe, scene, this);
-            shoeMap[shoe.wDevID] = marker;
-            scene->addItem(marker);
-        }*/
+        }
         qDebug() << "wDevID: " << cabinet.wDevID
                  << " byStoreNum: " << cabinet.byStoreNum
                  << " abyStatus: " << cabinet.abyStatus.toHex(' ').toUpper();

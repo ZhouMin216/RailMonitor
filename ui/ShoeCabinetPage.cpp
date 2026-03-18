@@ -59,6 +59,12 @@ void ShoeCabinetPage::updateFromDeviceManager(
         table->item(row, columnIndex(Column::Status))->setText(EnumtoString(cabinetData.byOnline));
         if (cabinetData.byOnline == CabinetStatus::Unregister){
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::red);
+        } else if (cabinetData.byOnline == CabinetStatus::Online){
+            table->item(row, columnIndex(Column::Status))->setForeground(Qt::green);
+        } else if (cabinetData.byOnline == CabinetStatus::Offline){
+            table->item(row, columnIndex(Column::Status))->setForeground(Qt::gray);
+        } else {
+            table->item(row, columnIndex(Column::Status))->setForeground(Qt::black);
         }
 
         // 格式化位置（经纬度）
@@ -110,6 +116,16 @@ void ShoeCabinetPage::showShoeDetailsDialog(quint16 cabinetId, const QByteArray&
 
         StorageStatus status = static_cast<StorageStatus>(statusArray.at(i));
         detailTable->setItem(row, 1, new QTableWidgetItem(EnumtoString(status)));
+        if (status == StorageStatus::Unregister){
+            detailTable->item(row, 1)->setForeground(Qt::red);
+        } else if (status == StorageStatus::Online){
+            detailTable->item(row, 1)->setForeground(Qt::green);
+        } else if (status == StorageStatus::Offline){
+            detailTable->item(row, 1)->setForeground(Qt::gray);
+        } else {
+            detailTable->item(row, 1)->setForeground(Qt::black);
+        }
+
         detailTable->item(row, 1)->setTextAlignment(Qt::AlignCenter);
 
         if (i < store_shoe_id.size()) {

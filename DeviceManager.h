@@ -16,6 +16,9 @@ public:
     quint16 GetCabinetID() { return cabinet_id_;}
     quint16 GetShoeID() { return shoe_id_;}
     quint8 GetStoreID() { return store_id_;}
+    void ChangeShoeStatus(DeviceStatus status) {
+        shoeData_.byOnline = status;
+    }
 
 private:
     quint16 shoe_id_; // 铁鞋ID
@@ -38,6 +41,7 @@ public:
     }
     const QPointF& GetPos() { return pos_;}
     QVector<quint16> GetStoreShoeID();
+    bool ShoeIsInStore(quint8 store_idx); // 判断仓位上的鞋是否在位
 private:
     void initStoreStatus();
 
@@ -67,6 +71,11 @@ public:
     }
 
     void loadConfig();
+
+public slots:
+    // 接收tcp数据
+    void updateCabinetStatus(const QList<CabinetData>& data);
+    void updateShoeStatus(const QList<ShoeData>& data);
 
 signals:
     void shoeCabinetUpdated(const QMap<quint16, std::shared_ptr<ShoeCabinet>>& data);

@@ -33,6 +33,12 @@ QVector<quint16> ShoeCabinet::GetStoreShoeID(){
     return id_vec;
 }
 
+bool ShoeCabinet::ShoeIsInStore(quint8 store_idx){
+    if (store_idx >= data_.abyStatus.size() || store_idx == 0) return false;
+
+    return data_.abyStatus.at(store_idx - 1) == 0x02; // StorageStatus::Online 在位
+}
+
 DeviceManager::DeviceManager(QObject *parent)
     : QObject(parent){
 
@@ -91,7 +97,6 @@ void DeviceManager::loadConfig(){
                 int store_idx = keyStr.toInt();         // 转换为 int: 1, 2...
                 quint16 shoe_id = static_cast<quint16>(storeObj[keyStr].toInt());
 
-                // 存入临时 map
                 std::shared_ptr<IconShoe> shoe = std::make_shared<IconShoe>(shoe_id, cabinet_id, store_idx);
                 if (shoe_map_.contains(shoe_id)){
                     QMessageBox::critical(nullptr, tr("错误"), tr("铁鞋ID重复：") + QString("%1").arg(shoe_id));
@@ -101,7 +106,7 @@ void DeviceManager::loadConfig(){
                 cabinet->AddIconShoe(store_idx, shoe);
 
                 // 调试输出 (可选)
-                qDebug() << "Cabinet " << cabinet_id << " store_idx" << store_idx << "-> shoe_id:" << shoe_id;
+                // qDebug() << "Cabinet " << cabinet_id << " store_idx" << store_idx << "-> shoe_id:" << shoe_id;
             }
         }
 
@@ -110,8 +115,44 @@ void DeviceManager::loadConfig(){
             return;
         }
         cabinet_Map_[cabinet_id] = cabinet;
-
-        // shoeCabinetPoints[id] = QPointF(lat,lng);
     }
-    qDebug() << "Cabinet size: " << cabinet_Map_.size() << " shoe_map_ size" << shoe_map_.size() ;
+    // qDebug() << "Cabinet size: " << cabinet_Map_.size() << " shoe_map_ size" << shoe_map_.size() ;
+}
+
+void DeviceManager::updateCabinetStatus(const QList<CabinetData>& data){
+    qDebug() << "updateCabinetStatus::updateCabinetStatus  " << data.size();
+    for(const auto& cabinet : data)
+    {
+        if (cabinet_Map_.contains(cabinet.wDevID))
+        {
+            auto cabinet_ptr = cabinet_Map_[cabinet.wDevID];
+            cabinet_ptr->SetData(cabinet);
+        }
+        // qDebug() << "wDevID: " << cabinet.wDevID
+        //          << " byStoreNum: " << cabinet.byStoreNum
+        //          << " abyStatus: " << cabinet.abyStatus.toHex(' ').toUpper();
+    }
+    updateCabinet();
+}
+
+void DeviceManager::updateShoeStatus(const QList<ShoeData>& data)
+{
+    for(const auto& shoe : data)
+    {
+        if (shoe_map_.contains(shoe.wDevID))
+        {
+            auto shoe_ptr = shoe_map_[shoe.wDevID];
+            shoe_ptr->SetData(shoe);
+
+            quint16 cabinetId = shoe_ptr->GetCabinetID();
+            if (cabinet_Map_.contains(cabinetId)){
+                quint8 storeIdx = shoe_ptr->GetStoreID();
+                auto cabinet_ptr = cabinet_Map_[cabinetId];
+                if (cabinet_ptr->ShoeIsInStore(storeIdx)){
+                    shoe_ptr->ChangeShoeStatus(DeviceStatus::InCabinet);
+                }
+            }
+        }
+    }
+    updateIconShoe();
 }

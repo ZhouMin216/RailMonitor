@@ -10,8 +10,6 @@
 #include "protocol/TimeSyncRequest.h"
 #include "protocol/DeviceParser.h"
 
-// const QHostAddress NetworkManager::MULTICAST_ADDRESS("239.255.100.1");
-
 NetworkManager::NetworkManager(QObject *parent)
     : QObject(parent),
     m_udpSocket(new QUdpSocket(this)),
@@ -20,12 +18,6 @@ NetworkManager::NetworkManager(QObject *parent)
     m_discoveryTimeoutTimer(new QTimer(this)),
     m_reconnectTimer(new QTimer(this))
 {
-    // UDP 绑定（允许共享地址）
-    // m_udpSocket->bind(QHostAddress::AnyIPv4, MULTICAST_PORT, QUdpSocket::ShareAddress);
-    // m_udpSocket->joinMulticastGroup(MULTICAST_ADDRESS);
-
-    // m_udpSocket->setSocketOption(QAbstractSocket::BroadcastEnabledOption, true);
-
     // 绑定到任意地址和端口（用于接收服务器回复）
     m_udpSocket->bind(QHostAddress::Any, 0); // 临时端口即可
 
@@ -50,29 +42,13 @@ NetworkManager::~NetworkManager() {
     m_discoveryTimer->stop();
     m_discoveryTimeoutTimer->stop();
     m_reconnectTimer->stop();
-    m_tcpSocket->disconnectFromHost();
-}
 
-/*
-void NetworkManager::startDiscovery() {
-    if (m_state == Connected || m_state == Connecting) return;
-
-    setState(Discovering);
-    m_discoveryTimeoutTimer->start(DISCOVERY_TIMEOUT_MS);
-
-    QByteArray msg = "DISCOVER_SERVER";
-    // m_udpSocket->writeDatagram(msg, QHostAddress::Broadcast, BROADCAST_PORT);
-    // qDebug() << "Sent broadcast discovery packet to port" << BROADCAST_PORT;
-
-    // 直接发送到广播地址
-    qint64 sent = m_udpSocket->writeDatagram(msg, QHostAddress::Broadcast, BROADCAST_PORT);
-    if (sent == -1) {
-        qDebug() << "Failed to send broadcast:" << m_udpSocket->errorString();
-        emit errorOccurred("无法发送广播：" + m_udpSocket->errorString());
-    } else {
-        qDebug() << "Sent broadcast discovery packet to port" << BROADCAST_PORT;
+    if (m_tcpSocket){
+        disconnect(m_tcpSocket, nullptr, this, nullptr);
+        m_tcpSocket->disconnectFromHost();
     }
-}*/
+
+}
 
 void NetworkManager::startDiscovery() {
     if (m_state == Connected || m_state == Connecting) return;
@@ -102,7 +78,7 @@ void NetworkManager::startDiscovery() {
                 continue;
             }
 
-            // 获取广播地址（Qt 已帮你计算好！）
+            // 获取广播地址（Qt 已计算好！）
             QHostAddress broadcast = entry.broadcast();
 
             // 检查广播地址是否有效（非空且不是 0.0.0.0）
@@ -195,7 +171,7 @@ void NetworkManager::onTcpConnected() {
 }
 
 void NetworkManager::onTcpDisconnected() {
-    qDebug() << "TCP disconnected";
+    qDebug() << "TCP disconnected" << m_state;
     if (m_state == Connected) {
         setState(Disconnected);
         scheduleReconnect();
@@ -311,11 +287,12 @@ void NetworkManager::onTcpReadyRead() {
             if (device.unpack(packet)) {
                 auto shoes = device.getShoeData();
                 auto cabinets = device.getCabinetData();
+                if (!cabinets.empty()) {
+                    emit cabinetData(cabinets);
+                }
                 if (!shoes.empty()) {
-                    qDebug() << "StatusData: emit shoeData ";
                     emit shoeData(shoes);
                 }
-                if (!cabinets.empty()) emit cabinetData(cabinets);
             } else {
                 qDebug() << "StatusData: m_recvBuffer unpack error ";
             }

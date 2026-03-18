@@ -53,10 +53,14 @@ void TieShoePage::updateFromDeviceManager(const QMap<quint16, std::shared_ptr<Ic
 
         auto shoeData = shoe->GetShoeData();
         table->item(row, columnIndex(Column::Status))->setText(EnumtoString(shoeData.byOnline));
-        // QTableWidgetItem*  item = table->item(row, columnIndex(Column::Status));
-        // item->setText(EnumtoString(shoeData.byOnline));
         if (shoeData.byOnline == DeviceStatus::Unregister){
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::red);
+        } else if (shoeData.byOnline == DeviceStatus::Online){
+            table->item(row, columnIndex(Column::Status))->setForeground(Qt::green);
+        } else if (shoeData.byOnline == DeviceStatus::Offline){
+            table->item(row, columnIndex(Column::Status))->setForeground(Qt::gray);
+        } else {
+            table->item(row, columnIndex(Column::Status))->setForeground(Qt::black);
         }
 
         // 格式化位置（经纬度）
