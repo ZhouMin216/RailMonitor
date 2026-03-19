@@ -48,7 +48,7 @@ bool ProtocolPacket::validateFrame(const QByteArray &data)
         return false;
     }
 
-    return true; // 测试，不做crc校验
+    // return true; // 测试，不做crc校验
 
     QByteArray checkData = data.left(data.size() - 2); // 去掉帧尾和接收到的异或值
     quint8 expectedXor = calculateXor(checkData);

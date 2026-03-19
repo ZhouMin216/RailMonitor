@@ -34,7 +34,7 @@ QVector<quint16> ShoeCabinet::GetStoreShoeID(){
 }
 
 bool ShoeCabinet::ShoeIsInStore(quint8 store_idx){
-    if (store_idx >= data_.abyStatus.size() || store_idx == 0) return false;
+    if (store_idx > data_.abyStatus.size() || store_idx == 0) return false;
 
     return data_.abyStatus.at(store_idx - 1) == 0x02; // StorageStatus::Online 在位
 }
@@ -120,7 +120,6 @@ void DeviceManager::loadConfig(){
 }
 
 void DeviceManager::updateCabinetStatus(const QList<CabinetData>& data){
-    qDebug() << "updateCabinetStatus::updateCabinetStatus  " << data.size();
     for(const auto& cabinet : data)
     {
         if (cabinet_Map_.contains(cabinet.wDevID))
@@ -135,9 +134,9 @@ void DeviceManager::updateCabinetStatus(const QList<CabinetData>& data){
     updateCabinet();
 }
 
-void DeviceManager::updateShoeStatus(const QList<ShoeData>& data)
+void DeviceManager::updateShoeStatus(QList<ShoeData> data)
 {
-    for(const auto& shoe : data)
+    for(auto& shoe : data)
     {
         if (shoe_map_.contains(shoe.wDevID))
         {
@@ -150,9 +149,11 @@ void DeviceManager::updateShoeStatus(const QList<ShoeData>& data)
                 auto cabinet_ptr = cabinet_Map_[cabinetId];
                 if (cabinet_ptr->ShoeIsInStore(storeIdx)){
                     shoe_ptr->ChangeShoeStatus(DeviceStatus::InCabinet);
+                    shoe.byOnline = DeviceStatus::InCabinet;
                 }
             }
         }
     }
+    emit shoeData(data); // 发送给地图
     updateIconShoe();
 }

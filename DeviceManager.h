@@ -75,11 +75,12 @@ public:
 public slots:
     // 接收tcp数据
     void updateCabinetStatus(const QList<CabinetData>& data);
-    void updateShoeStatus(const QList<ShoeData>& data);
+    void updateShoeStatus(QList<ShoeData> data);
 
 signals:
     void shoeCabinetUpdated(const QMap<quint16, std::shared_ptr<ShoeCabinet>>& data);
     void iconShoeUpdated(const QMap<quint16, std::shared_ptr<IconShoe>>& data);
+    void shoeData(const QList<ShoeData>& data);
 
 private:
     QMap<quint16, std::shared_ptr<ShoeCabinet>> cabinet_Map_;

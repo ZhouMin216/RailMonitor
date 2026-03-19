@@ -35,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     });
 
     connect(networkManager, &NetworkManager::cabinetData, mapPage, &RailMapViewerWidget::updateCabinets);
-    connect(networkManager, &NetworkManager::shoeData, mapPage, &RailMapViewerWidget::updateShoes);
+    connect(device_mgr_, &DeviceManager::shoeData, mapPage, &RailMapViewerWidget::updateShoes);
 
     m_databaseManager->initDatabase();
 

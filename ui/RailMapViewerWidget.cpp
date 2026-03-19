@@ -595,6 +595,8 @@ DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, 
     simulatedParams["电量值"] = shoeData.byBatVal;
     simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
     simulatedParams["卫星数量"] = shoeData.byStarNum;
+
+    setVisible(shoeData.byOnline != DeviceStatus::InCabinet);
 }
 
 void DeviceMarkerItem::setupUI()
@@ -628,6 +630,8 @@ void DeviceMarkerItem::updateData(const ShoeData& data)
     simulatedParams["电量值"] = shoeData.byBatVal;
     simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
     simulatedParams["卫星数量"] = shoeData.byStarNum;
+
+    setVisible(shoeData.byOnline != DeviceStatus::InCabinet);
 
     // 设置组的坐标 (相对于场景)
     QPointF px = parentWidget->geoToPixel(data.lng, data.lat);
