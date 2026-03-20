@@ -351,7 +351,8 @@ void RailMapViewerWidget::drawFence() {
     }
     poly << geoToPixel(savedFencePoints.first().x(), savedFencePoints.first().y());
 
-    scene->addPolygon(poly, QPen(Qt::red, 3), QBrush(QColor(255, 0, 0, 30)));
+    // scene->addPolygon(poly, QPen(Qt::red, 3), QBrush(QColor(255, 0, 0, 30)));
+    scene->addPolygon(poly, QPen(Qt::red, 3));
 }
 
 void RailMapViewerWidget::drawShoeCabinet(){
@@ -440,37 +441,46 @@ void RailMapViewerWidget::updateCabinets(const QList<CabinetData>& data)
 void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
 {
     qDebug() << "RailMapViewerWidget::updateShoes  " << data.size();
-    for( auto shoe:data)
-    {
+    QStringList outOfFenceIds;
+
+    for( auto shoe:data) {
+        bool inPolygon = true;
         if (!savedFencePoints.isEmpty()) {
             // 确保不超过地图经纬度的极值
             shoe.lng = qBound(minLng, shoe.lng, maxLng);
             shoe.lat = qBound(minLat, shoe.lat, maxLat);
             QPointF pt(shoe.lng, shoe.lat);
             if (!pointInPolygon(pt, savedFencePoints)) {
-                QMessageBox::warning(this, "警告", QString("铁鞋%1超出电子围栏！").arg(shoe.wDevID));
-                // return;
+                inPolygon = false;
             }
         }
 
-        // QMap<quint16, DeviceMarkerItem*> shoeMap;
+        DeviceMarkerItem *marker = nullptr;
         if (shoeMap.contains(shoe.wDevID))
         {
             qDebug() << " DeviceMarkerItem update  " << data.size();
-            shoeMap[shoe.wDevID]->updateData(shoe);
-        } else
-        {
+            marker = shoeMap[shoe.wDevID];
+            marker->updateData(shoe);
+        } else {
             qDebug() << " DeviceMarkerItem create  " << data.size();
-            DeviceMarkerItem *marker = new DeviceMarkerItem(shoe, scene, this);
+            marker = new DeviceMarkerItem(shoe, scene, this);
             shoeMap[shoe.wDevID] = marker;
             scene->addItem(marker);
         }
-        qDebug() << "wDevID: " << shoe.wDevID
-                 << " byBatVal: " << shoe.byBatVal
-                 << " byStarNum: " << shoe.byStarNum
-                 << " byPosQuality: " << shoe.byPosQuality
-                 << " lng: " << QString::number(shoe.lng, 'f', 7)
-                 << " lat: " << QString::number(shoe.lat, 'f', 7);
+
+        if (marker) {
+            if (!inPolygon && marker->isInPolygon()) {
+                outOfFenceIds << QString::number(shoe.wDevID);
+            }
+            marker->setInPolygon(inPolygon);
+
+        }
+    }
+
+    // 统一弹窗，避免多次阻塞
+    if (!outOfFenceIds.isEmpty()) {
+        QMessageBox::warning(this, "警告",
+                             QString("以下铁鞋已超出电子围栏：%1").arg(outOfFenceIds.join(", ")));
     }
 }
 
@@ -631,6 +641,7 @@ void DeviceMarkerItem::updateData(const ShoeData& data)
     simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
     simulatedParams["卫星数量"] = shoeData.byStarNum;
 
+    prevStatus_ = shoeData.byOnline;
     setVisible(shoeData.byOnline != DeviceStatus::InCabinet);
 
     // 设置组的坐标 (相对于场景)

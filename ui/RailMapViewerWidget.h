@@ -112,6 +112,9 @@ public:
 
     void updateData(const ShoeData& data);
     quint16 getDevID(){ return devID; }
+    DeviceStatus getPrevStatus() { return prevStatus_;}
+    bool isInPolygon() { return inPolygon_;}
+    void setInPolygon(bool in) { inPolygon_ = in; }
 
 private:
     void setupUI();
@@ -123,6 +126,8 @@ private:
     double longitude;
     RailMapViewerWidget *parentWidget; // 用于调用父窗口的槽函数
     ShoeData shoeData;
+    DeviceStatus prevStatus_{DeviceStatus::Unregister};
+    bool inPolygon_{true};
 
     QMap<QString, QVariant> simulatedParams;
 private:
