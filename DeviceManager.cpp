@@ -77,7 +77,7 @@ void DeviceManager::loadConfig(){
         // info.name = p["name"].toString();
         double lng = p["lng"].toDouble();
         double lat = p["lat"].toDouble();
-        QPointF pos = QPointF(lat,lng);
+        QPointF pos = QPointF(lng, lat);
         quint8 store_num = static_cast<quint16>(p["store_num"].toInt());
 
         std::shared_ptr<ShoeCabinet> cabinet = std::make_shared<ShoeCabinet>(cabinet_id, store_num, pos);
