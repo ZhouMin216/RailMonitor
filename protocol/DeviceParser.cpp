@@ -45,13 +45,23 @@ QString EnumtoString(PosQuality quality) {
     }
 }
 
+inline double sf_extract_to_wgs84(double value)
+{
+    int deg = static_cast<int>(value);
+    double min = (value - static_cast<double>(deg)) * 100.0;
+
+    return deg + min / 60.0;
+}
+
 double convertDmToDecimal(qint16 degrees, qint32 minutes) {
     // return degrees + minutes / 60.0;
     QString tmp = QString("0.%1").arg(minutes);
-    qDebug() << " ================= tmp " <<  tmp  << " ------------------ ";
     float value = tmp.toDouble();
     // return degrees + minutes / 10000000.0;
-    return degrees + value;
+    // return degrees + value;
+
+    qDebug() << " ================= protocol value: " <<  degrees + value  << " ------------------ ";
+    return sf_extract_to_wgs84(degrees + value);
 }
 
 DeviceParser::DeviceParser(quint16 deviceId)
@@ -168,7 +178,7 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         }
         offset += 4;
         shoe.lng = convertDmToDecimal(LngDegree, LngMinutes);
-        qDebug() << " ================= shoe.lng " << QString::number(shoe.lng, 'f', 6) << "  LngMinutes= " <<LngMinutes << " ------------------ ";
+        qDebug() << " ================= converted shoe.lng " << QString::number(shoe.lng, 'f', 6) << " ------------------ ";
 
         quint16 LatDegree = 0;
         if (!LittleEndianReader::tryReadUInt16(m_abyData, offset, LatDegree)) {
@@ -183,7 +193,7 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         }
         offset += 4;
         shoe.lat = convertDmToDecimal(LatDegree, LatMinutes);
-        qDebug() << " ================= shoe.lat " <<  QString::number(shoe.lat, 'f', 6) << "  LatMinutes= " <<LatMinutes << " ------------------ ";
+        qDebug() << " ================= converted shoe.lat " <<  QString::number(shoe.lat, 'f', 6) << " ------------------ ";
 
         m_shoeList.append(shoe);
         cnt++;
