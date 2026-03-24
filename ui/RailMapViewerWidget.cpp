@@ -19,9 +19,7 @@
 #include <QTimer>
 #include <QGraphicsDropShadowEffect>  // 新增
 #include <QRadialGradient>            // 新增
-
-// 全局围栏脉冲定时器（避免重复创建）
-static QTimer* g_fencePulseTimer = nullptr;
+#include <QScrollBar>
 
 RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     : QWidget(parent) {
@@ -30,6 +28,10 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     view->setRenderHint(QPainter::Antialiasing, true);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     view->setStyleSheet("background: #000010; border: none;"); // 深空黑背景
+
+    // 隐藏滚动条
+    view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     lngInput = new QLineEdit;
     lngInput->setPlaceholderText("经度 (e.g., 120.718)");
@@ -49,10 +51,11 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
         double angle = rotateInput->text().toDouble(&ok);
         if (ok) {
             view->setTransform(QTransform().rotate(angle));
+            view->fitInView(scene->sceneRect(), Qt::KeepAspectRatioByExpanding);
+            view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum());
             rotateInput->clear();
         }
-    }
-            );
+    });
 
     // 电子围栏按钮
     startFenceBtn = new QPushButton("开始围栏");
@@ -102,6 +105,30 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
 
     loadConfig();
     drawAll();
+
+    // 👇 关键：延迟执行 fitInView
+    QTimer::singleShot(0, this, [this]() {
+        view->setTransform(QTransform().rotate(-24.5));
+        view->fitInView(scene->sceneRect(), Qt::KeepAspectRatioByExpanding);
+        view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum());
+        // 注意：此时滚动条已被隐藏，setValue 无意义，可删掉
+    });
+
+    // 启动脉冲动画（局部，避免全局依赖）
+    // if (fenceItem)
+    // {
+    //     QTimer* pulseTimer = new QTimer(this);
+    //     pulseTimer->setSingleShot(false);
+    //     connect(pulseTimer, &QTimer::timeout, [this]() {
+    //         if (!fenceItem || savedFencePoints.isEmpty()) return;
+    //         QPen pen = fenceItem->pen();
+    //         static qreal offset = 0;
+    //         offset += 2;
+    //         pen.setDashOffset(offset);
+    //         fenceItem->setPen(pen);
+    //     });
+    //     pulseTimer->start(100);
+    // }
 }
 
 void RailMapViewerWidget::loadGeoFence()
@@ -252,7 +279,7 @@ void RailMapViewerWidget::drawAll() {
 }
 
 void RailMapViewerWidget::drawTracks() {
-    QPen masterPen(QColor("#00ffff"), 1.8);
+    QPen masterPen(QColor("#00ffff"), 1.2);
     masterPen.setCapStyle(Qt::RoundCap);
     masterPen.setJoinStyle(Qt::RoundJoin);
 
@@ -266,11 +293,11 @@ void RailMapViewerWidget::drawTracks() {
             QPointF p2 = geoToPixel(track.masterPoints[i+1].x(), track.masterPoints[i+1].y());
             QGraphicsLineItem* line = scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), masterPen);
 
-            QGraphicsDropShadowEffect* glow = new QGraphicsDropShadowEffect();
-            glow->setColor(QColor(0, 255, 255, 60));
-            glow->setBlurRadius(4);
-            glow->setOffset(0, 0);
-            line->setGraphicsEffect(glow);
+            // QGraphicsDropShadowEffect* glow = new QGraphicsDropShadowEffect();
+            // glow->setColor(QColor(0, 255, 255, 60));
+            // glow->setBlurRadius(4);
+            // glow->setOffset(0, 0);
+            // line->setGraphicsEffect(glow);
         }
 
         for (int i = 0; i < track.slavePoints.size() - 1; ++i) {
@@ -310,6 +337,7 @@ void RailMapViewerWidget::drawBuildings() {
         cx /= poly.size(); cy /= poly.size();
 
         QGraphicsTextItem *text = scene->addText(building.name, font);
+        text->setFlag(QGraphicsItem::ItemIgnoresTransformations);
         text->setDefaultTextColor(QColor("#ffffff"));
         text->setPos(cx - text->boundingRect().width()/2, cy - text->boundingRect().height()/2);
     }
@@ -326,18 +354,6 @@ void RailMapViewerWidget::drawFence() {
 
     fenceItem = scene->addPolygon(poly, QPen(QColor("#ff0000"), 2.5, Qt::DashLine));
     fenceItem->setZValue(100);
-
-    // 初始化全局脉冲定时器（只创建一次）
-    if (!g_fencePulseTimer) {
-        g_fencePulseTimer = new QTimer(qApp);
-        connect(g_fencePulseTimer, &QTimer::timeout, []() {
-            static qreal offset = 0;
-            offset += 2;
-            // 注意：此处无法直接访问 fenceItem，需在 RailMapViewerWidget 中处理
-            // 因此我们在 finishFenceDrawing 中启动局部动画
-        });
-        // 实际动画在 finishFenceDrawing 中启动（见下文）
-    }
 }
 
 void RailMapViewerWidget::drawShoeCabinet(){
@@ -346,6 +362,7 @@ void RailMapViewerWidget::drawShoeCabinet(){
         QString name = QString("鞋柜%1").arg(it.key());
         QPointF pt = it.value();
         ShoeCabinetItem *marker = new ShoeCabinetItem(name, pt.x(), pt.y(), scene, this);
+        marker->setFlag(QGraphicsItem::ItemIgnoresTransformations);
         shoeCabinet[it.key()] = marker;
         scene->addItem(marker);
     }
@@ -385,20 +402,20 @@ void RailMapViewerWidget::finishFenceDrawing() {
 
     drawAll(); // 会调用 drawFence()
 
-    // 启动脉冲动画（局部，避免全局依赖）
-    if (fenceItem) {
-        QTimer* pulseTimer = new QTimer(this);
-        pulseTimer->setSingleShot(false);
-        connect(pulseTimer, &QTimer::timeout, [this]() {
-            if (!fenceItem) return;
-            QPen pen = fenceItem->pen();
-            static qreal offset = 0;
-            offset += 2;
-            pen.setDashOffset(offset);
-            fenceItem->setPen(pen);
-        });
-        pulseTimer->start(100);
-    }
+    // // 启动脉冲动画（局部，避免全局依赖）
+    // if (fenceItem) {
+    //     QTimer* pulseTimer = new QTimer(this);
+    //     pulseTimer->setSingleShot(false);
+    //     connect(pulseTimer, &QTimer::timeout, [this]() {
+    //         if (!fenceItem) return;
+    //         QPen pen = fenceItem->pen();
+    //         static qreal offset = 0;
+    //         offset += 2;
+    //         pen.setDashOffset(offset);
+    //         fenceItem->setPen(pen);
+    //     });
+    //     pulseTimer->start(100);
+    // }
 
     coordLabel->setText("电子围栏已设置");
 }
