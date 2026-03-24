@@ -49,6 +49,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
 
 void MainWindow::applyFlatStyle() {
+    // 从 Qt 资源系统加载 QSS
+    QFile file(":/styles/tech_dark.qss");
+    if (file.open(QFile::ReadOnly)) {
+        qApp->setStyleSheet(file.readAll());
+        file.close();
+    } else {
+        qDebug() << " open file failed !!!!!!";
+    }
+
+    // 为退出按钮设置特殊 objectName（用于 QSS 选择器）
+    if (exitBtn) {
+        exitBtn->setObjectName("exitButton");
+    }
+
+    // 确保主窗口能被 #MainWindow 选中
+    this->setObjectName("MainWindow");
+    return;
     QString style = R"(
         QMainWindow {
             background-color: #f5f7fa;

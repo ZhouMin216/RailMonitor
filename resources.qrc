@@ -1,0 +1,6 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+<qresource prefix="/styles">
+    <file alias="tech_dark.qss">resources/styles/tech_dark.qss</file>
+</qresource>
+</RCC>

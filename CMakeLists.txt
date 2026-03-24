@@ -25,6 +25,8 @@ qt6_add_executable(RailMonitor
     protocol/WhitelistSync.h protocol/WhitelistSync.cpp
     protocol/DeviceParser.h protocol/DeviceParser.cpp
     DeviceManager.h DeviceManager.cpp
+
+    resources.qrc
 )
 
 target_include_directories(RailMonitor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

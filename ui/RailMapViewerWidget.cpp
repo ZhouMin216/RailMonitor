@@ -17,6 +17,11 @@
 #include <QMessageBox>
 #include <QGraphicsSceneMouseEvent>
 #include <QTimer>
+#include <QGraphicsDropShadowEffect>  // 新增
+#include <QRadialGradient>            // 新增
+
+// 全局围栏脉冲定时器（避免重复创建）
+static QTimer* g_fencePulseTimer = nullptr;
 
 RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     : QWidget(parent) {
@@ -24,8 +29,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     view = new QGraphicsView(scene);
     view->setRenderHint(QPainter::Antialiasing, true);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    view->setStyleSheet("background: #000032;");
-    // view->setTransform(QTransform().rotate(-20.0));
+    view->setStyleSheet("background: #000010; border: none;"); // 深空黑背景
 
     lngInput = new QLineEdit;
     lngInput->setPlaceholderText("经度 (e.g., 120.718)");
@@ -33,7 +37,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     latInput->setPlaceholderText("纬度 (e.g., 30.759)");
     QPushButton *addBtn = new QPushButton("添加标记");
     coordLabel = new QLabel("点击地图查看坐标");
-    coordLabel->setStyleSheet("background-color: #f0f0f0; padding: 4px;");
+    coordLabel->setStyleSheet("background-color: #1a1a2e; color: #00ffcc; padding: 4px; border-radius: 3px;");
 
     connect(addBtn, &QPushButton::clicked, this, &RailMapViewerWidget::add_user_marker);
 
@@ -41,14 +45,14 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     rotateInput->setPlaceholderText("旋转角度 (e.g., -20)");
     QPushButton *rotateBtn = new QPushButton("旋转");
     connect(rotateBtn, &QPushButton::clicked, this, [this]{
-            bool ok;
-            double angle = rotateInput->text().toDouble(&ok);
-            if (ok) {
-                view->setTransform(QTransform().rotate(angle));
-                rotateInput->clear();
-            }
+        bool ok;
+        double angle = rotateInput->text().toDouble(&ok);
+        if (ok) {
+            view->setTransform(QTransform().rotate(angle));
+            rotateInput->clear();
         }
-    );
+    }
+            );
 
     // 电子围栏按钮
     startFenceBtn = new QPushButton("开始围栏");
@@ -97,23 +101,17 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     mainLayout->addWidget(controlWidget);
 
     loadConfig();
-
-    // 加载电子围栏
-    // savedFencePoints = DatabaseManager::loadGeoFence();
-
     drawAll();
-    // drawShoeCabinet();
 }
 
- void RailMapViewerWidget::loadGeoFence()
+void RailMapViewerWidget::loadGeoFence()
 {
-     qDebug() << "=============== RailMapViewerWidget::loadGeoFence ====================";
-     emit getGeoFence();
-     qDebug() << "===================================";
+    qDebug() << "=============== RailMapViewerWidget::loadGeoFence ====================";
+    emit getGeoFence();
+    qDebug() << "===================================";
 }
 
 void RailMapViewerWidget::loadConfig() {
-    // QString configPath = QDir::currentPath() + "/config.json";
     QString configPath = QDir::currentPath() + "/rail_config.json";
     QFile file(configPath);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -136,12 +134,9 @@ void RailMapViewerWidget::loadConfig() {
         if (!val.isObject()) continue;
         QJsonObject trackObj = val.toObject();
         RailTrack newTrack;
-
-        // 提取基础信息
         newTrack.number = trackObj["number"].toInt(-1);
         newTrack.name = trackObj["number"].toString();
 
-        // 解析 Master 轨道
         QList<QPointF> masterPoints;
         if (trackObj.contains("master") && trackObj["master"].isArray()) {
             for (const QJsonValue &ptVal : trackObj["master"].toArray()) {
@@ -150,15 +145,12 @@ void RailMapViewerWidget::loadConfig() {
                     if (ptArr.size() >= 2) {
                         double lng = ptArr[0].toDouble();
                         double lat = ptArr[1].toDouble();
-
                         masterPoints.append(QPointF(lng, lat));
-                        // updateBounds(lng, lat);
                     }
                 }
             }
         }
 
-        // 解析 Slave 轨道
         QList<QPointF> slavePoints;
         if (trackObj.contains("slave") && trackObj["slave"].isArray()) {
             for (const QJsonValue &ptVal : trackObj["slave"].toArray()) {
@@ -168,7 +160,6 @@ void RailMapViewerWidget::loadConfig() {
                         double lng = ptArr[0].toDouble();
                         double lat = ptArr[1].toDouble();
                         slavePoints.append(QPointF(lng, lat));
-                        // updateBounds(lng, lat);
                     }
                 }
             }
@@ -179,18 +170,13 @@ void RailMapViewerWidget::loadConfig() {
         railTracks_.append(newTrack);
     }
 
-    tracks.clear();
-    buildings.clear();
     buildings_.clear();
-
     const QJsonArray& buildingsArray = root["buildings"].toArray();
     for (const QJsonValue &val : buildingsArray) {
         if (!val.isObject()) continue;
         QJsonObject bObj = val.toObject();
         Building newBuilding;
         newBuilding.name = bObj["name"].toString();
-
-        // buildings.append(bObj.toVariantMap());
 
         if (bObj.contains("coordinates") && bObj["coordinates"].isArray()) {
             for (const QJsonValue &ptVal : bObj["coordinates"].toArray()) {
@@ -200,7 +186,6 @@ void RailMapViewerWidget::loadConfig() {
                         double lng = ptArr[0].toDouble();
                         double lat = ptArr[1].toDouble();
                         newBuilding.points.append(QPointF(lng, lat));
-                        // updateBounds(lng, lat);
                     }
                 }
             }
@@ -208,15 +193,15 @@ void RailMapViewerWidget::loadConfig() {
         buildings_.append(newBuilding);
     }
 
+    shoeCabinetPoints.clear();
     const QJsonArray& shoeCabinetArray = root["shoeCabinets"].toArray();
     for (const QJsonValue &val : shoeCabinetArray) {
         if (val.isObject()) {
             QJsonObject p = val.toObject();
             quint16 id = p["id"].toInt();
-            // QString name = p["name"].toString();
             double lng = p["lng"].toDouble();
             double lat = p["lat"].toDouble();
-            shoeCabinetPoints[id] = QPointF(lat,lng);
+            shoeCabinetPoints[id] = QPointF(lat, lng);
         }
     }
 
@@ -225,7 +210,6 @@ void RailMapViewerWidget::loadConfig() {
     minLat = maxLat = buildings_.first().points.first().y();
     minLng = maxLng = buildings_.first().points.first().x();
 
-
     auto updateBounds = [&](const QPointF &pt) {
         minLat = qMin(minLat, pt.y());
         maxLat = qMax(maxLat, pt.y());
@@ -233,12 +217,12 @@ void RailMapViewerWidget::loadConfig() {
         maxLng = qMax(maxLng, pt.x());
     };
 
-    for(const auto &track :railTracks_){
+    for(const auto &track : railTracks_) {
         for (const QPointF &pt : track.masterPoints) updateBounds(pt);
         for (const QPointF &pt : track.slavePoints) updateBounds(pt);
     }
 
-    for(const auto &build :buildings_){
+    for(const auto &build : buildings_) {
         for (const QPointF &pt : build.points) updateBounds(pt);
     }
 
@@ -263,82 +247,71 @@ void RailMapViewerWidget::drawAll() {
     scene->clear();
     drawTracks();
     drawBuildings();
-    // drawViaPoints();
     drawFence();
     drawShoeCabinet();
 }
 
 void RailMapViewerWidget::drawTracks() {
-    QPen pen(QColor(180, 255, 255), 1);
+    QPen masterPen(QColor("#00ffff"), 1.8);
+    masterPen.setCapStyle(Qt::RoundCap);
+    masterPen.setJoinStyle(Qt::RoundJoin);
+
+    QPen slavePen(QColor("#00cccc"), 1.2);
+    slavePen.setCapStyle(Qt::RoundCap);
+    slavePen.setJoinStyle(Qt::RoundJoin);
 
     for (const RailTrack &track : railTracks_) {
-        // QPolygonF poly;
-        for (int i = 0; i < track.masterPoints.size() - 1; ++i)
-        // for (const QPointF &geo : track.masterPoints)
-        {
+        for (int i = 0; i < track.masterPoints.size() - 1; ++i) {
             QPointF p1 = geoToPixel(track.masterPoints[i].x(), track.masterPoints[i].y());
             QPointF p2 = geoToPixel(track.masterPoints[i+1].x(), track.masterPoints[i+1].y());
-            scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), pen);
+            QGraphicsLineItem* line = scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), masterPen);
+
+            QGraphicsDropShadowEffect* glow = new QGraphicsDropShadowEffect();
+            glow->setColor(QColor(0, 255, 255, 60));
+            glow->setBlurRadius(4);
+            glow->setOffset(0, 0);
+            line->setGraphicsEffect(glow);
         }
 
-        for (int i = 0; i < track.slavePoints.size() - 1; ++i)
-        // for (const QPointF &geo : track.masterPoints)
-        {
+        for (int i = 0; i < track.slavePoints.size() - 1; ++i) {
             QPointF p1 = geoToPixel(track.slavePoints[i].x(), track.slavePoints[i].y());
             QPointF p2 = geoToPixel(track.slavePoints[i+1].x(), track.slavePoints[i+1].y());
-            scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), pen);
+            scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), slavePen);
         }
     }
 }
 
 void RailMapViewerWidget::drawBuildings() {
-    QPen pen(QColor(165, 42, 42), 2);
-    QBrush brush(QColor(245, 222, 179, 80));
-    QFont font;
-    font.setPointSize(10);
+    QBrush brush(QColor(20, 20, 40, 180));
+    QPen pen(QColor("#4a6aff"), 2.0);
+    pen.setJoinStyle(Qt::MiterJoin);
+
+    QFont font("Consolas", 10, QFont::Bold);
+    font.setLetterSpacing(QFont::PercentageSpacing, 110);
 
     for (const Building &building : buildings_) {
         QPolygonF poly;
         for (const QPointF &geo : building.points) {
-                QPointF px = geoToPixel(geo.x(), geo.y());
-                poly << px;
+            QPointF px = geoToPixel(geo.x(), geo.y());
+            poly << px;
         }
         if (poly.size() < 3) continue;
-        scene->addPolygon(poly, pen, brush);
+
+        QGraphicsPolygonItem* polygon = scene->addPolygon(poly, pen, brush);
+
+        QGraphicsDropShadowEffect* innerGlow = new QGraphicsDropShadowEffect();
+        innerGlow->setColor(QColor(74, 106, 255, 40));
+        innerGlow->setBlurRadius(8);
+        innerGlow->setOffset(0, 0);
+        polygon->setGraphicsEffect(innerGlow);
 
         qreal cx = 0, cy = 0;
         for (const QPointF &p : poly) { cx += p.x(); cy += p.y(); }
         cx /= poly.size(); cy /= poly.size();
+
         QGraphicsTextItem *text = scene->addText(building.name, font);
+        text->setDefaultTextColor(QColor("#ffffff"));
         text->setPos(cx - text->boundingRect().width()/2, cy - text->boundingRect().height()/2);
-    }
-    return;
-    for (const QVariant &bldVar : buildings) {
-        QVariantMap bld = bldVar.toMap();
-        QStringList corners = bld["corner"].toStringList();
-        QPolygonF poly;
-        for (const QString &cid : corners) {
-            if (buildPoints.contains(cid)) {
-                QPointF geo = buildPoints[cid];
-                QPointF px = geoToPixel(geo.x(), geo.y());
-                poly << px;
-            }
-        }
-        if (poly.size() < 3) continue;
-        scene->addPolygon(poly, pen, brush);
-
-        qreal cx = 0, cy = 0;
-        for (const QPointF &p : poly) { cx += p.x(); cy += p.y(); }
-        cx /= poly.size(); cy /= poly.size();
-        QGraphicsTextItem *text = scene->addText(bld["name"].toString(), font);
-        text->setPos(cx - text->boundingRect().width()/2, cy - text->boundingRect().height()/2);
-    }
-}
-
-void RailMapViewerWidget::drawViaPoints() {
-    for (const QPointF &pt : viaPoints) {
-        QPointF px = geoToPixel(pt.x(), pt.y());
-        scene->addEllipse(px.x()-2, px.y()-2, 4, 4, QPen(Qt::black), Qt::red);
     }
 }
 
@@ -351,16 +324,26 @@ void RailMapViewerWidget::drawFence() {
     }
     poly << geoToPixel(savedFencePoints.first().x(), savedFencePoints.first().y());
 
-    // scene->addPolygon(poly, QPen(Qt::red, 3), QBrush(QColor(255, 0, 0, 30)));
-    scene->addPolygon(poly, QPen(Qt::red, 3));
+    fenceItem = scene->addPolygon(poly, QPen(QColor("#ff0000"), 2.5, Qt::DashLine));
+    fenceItem->setZValue(100);
+
+    // 初始化全局脉冲定时器（只创建一次）
+    if (!g_fencePulseTimer) {
+        g_fencePulseTimer = new QTimer(qApp);
+        connect(g_fencePulseTimer, &QTimer::timeout, []() {
+            static qreal offset = 0;
+            offset += 2;
+            // 注意：此处无法直接访问 fenceItem，需在 RailMapViewerWidget 中处理
+            // 因此我们在 finishFenceDrawing 中启动局部动画
+        });
+        // 实际动画在 finishFenceDrawing 中启动（见下文）
+    }
 }
 
 void RailMapViewerWidget::drawShoeCabinet(){
     shoeCabinet.clear();
-    for (QMap<quint16, QPointF>::const_iterator it = shoeCabinetPoints.constBegin();
-         it != shoeCabinetPoints.constEnd(); ++it) {
+    for (auto it = shoeCabinetPoints.constBegin(); it != shoeCabinetPoints.constEnd(); ++it) {
         QString name = QString("鞋柜%1").arg(it.key());
-        // QString name = it.key();
         QPointF pt = it.value();
         ShoeCabinetItem *marker = new ShoeCabinetItem(name, pt.x(), pt.y(), scene, this);
         shoeCabinet[it.key()] = marker;
@@ -385,9 +368,8 @@ void RailMapViewerWidget::updateFencePreview() {
         poly << geoToPixel(currentFencePoints.first().x(), currentFencePoints.first().y());
     }
 
-    // fenceItem = scene->addPolygon(poly, QPen(Qt::yellow, 2), QBrush(Qt::yellow, 50));
     QColor yellowColor = Qt::yellow;
-    yellowColor.setAlpha(50); // 半透明
+    yellowColor.setAlpha(50);
     fenceItem = scene->addPolygon(poly, QPen(Qt::yellow, 2), QBrush(yellowColor));
 }
 
@@ -399,13 +381,25 @@ void RailMapViewerWidget::finishFenceDrawing() {
 
     savedFencePoints = currentFencePoints;
     isDrawingFence = false;
-
-    // DatabaseManager::saveGeoFence(savedFencePoints);
-
-    qDebug() << "emit savedFencePoints,size:" << savedFencePoints.size();
     emit saveGeoFence(savedFencePoints);
 
-    drawAll();
+    drawAll(); // 会调用 drawFence()
+
+    // 启动脉冲动画（局部，避免全局依赖）
+    if (fenceItem) {
+        QTimer* pulseTimer = new QTimer(this);
+        pulseTimer->setSingleShot(false);
+        connect(pulseTimer, &QTimer::timeout, [this]() {
+            if (!fenceItem) return;
+            QPen pen = fenceItem->pen();
+            static qreal offset = 0;
+            offset += 2;
+            pen.setDashOffset(offset);
+            fenceItem->setPen(pen);
+        });
+        pulseTimer->start(100);
+    }
+
     coordLabel->setText("电子围栏已设置");
 }
 
@@ -414,39 +408,25 @@ void RailMapViewerWidget::clearFence() {
     savedFencePoints.clear();
     currentFencePoints.clear();
     isDrawingFence = false;
-
-    // QSqlQuery query;
-    // query.exec("DELETE FROM geo_fence WHERE id = 1");
-
     drawAll();
     coordLabel->setText("电子围栏已清除");
 }
 
 void RailMapViewerWidget::updateCabinets(const QList<CabinetData>& data)
 {
-    qDebug() << "RailMapViewerWidget::updateCabinets  " << data.size();
-    for(const auto& cabinet : data)
-    {
-        if (shoeCabinet.contains(cabinet.wDevID))
-        {
-            qDebug() << " ShoeCabinetItem update  " << data.size();
+    for(const auto& cabinet : data) {
+        if (shoeCabinet.contains(cabinet.wDevID)) {
             shoeCabinet[cabinet.wDevID]->updateData(cabinet);
         }
-        qDebug() << "wDevID: " << cabinet.wDevID
-                 << " byStoreNum: " << cabinet.byStoreNum
-                 << " abyStatus: " << cabinet.abyStatus.toHex(' ').toUpper();
     }
 }
 
 void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
 {
-    qDebug() << "RailMapViewerWidget::updateShoes  " << data.size();
     QStringList outOfFenceIds;
-
-    for( auto shoe:data) {
+    for(auto shoe : data) {
         bool inPolygon = true;
         if (!savedFencePoints.isEmpty()) {
-            // 确保不超过地图经纬度的极值
             shoe.lng = qBound(minLng, shoe.lng, maxLng);
             shoe.lat = qBound(minLat, shoe.lat, maxLat);
             QPointF pt(shoe.lng, shoe.lat);
@@ -456,13 +436,10 @@ void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
         }
 
         DeviceMarkerItem *marker = nullptr;
-        if (shoeMap.contains(shoe.wDevID))
-        {
-            qDebug() << " DeviceMarkerItem update  " << data.size();
+        if (shoeMap.contains(shoe.wDevID)) {
             marker = shoeMap[shoe.wDevID];
             marker->updateData(shoe);
         } else {
-            qDebug() << " DeviceMarkerItem create  " << data.size();
             marker = new DeviceMarkerItem(shoe, scene, this);
             shoeMap[shoe.wDevID] = marker;
             scene->addItem(marker);
@@ -473,11 +450,9 @@ void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
                 outOfFenceIds << QString::number(shoe.wDevID);
             }
             marker->setInPolygon(inPolygon);
-
         }
     }
 
-    // 统一弹窗，避免多次阻塞
     if (!outOfFenceIds.isEmpty()) {
         QMessageBox::warning(this, "警告",
                              QString("以下铁鞋已超出电子围栏：%1").arg(outOfFenceIds.join(", ")));
@@ -487,6 +462,7 @@ void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
 void RailMapViewerWidget::handleIncomingFencePoint(const QList<QPointF>& data)
 {
     savedFencePoints = data;
+    drawAll();
 }
 
 void RailMapViewerWidget::add_user_marker() {
@@ -509,8 +485,7 @@ void RailMapViewerWidget::add_user_marker() {
     if (!savedFencePoints.isEmpty()) {
         QPointF pt(lng, lat);
         if (!pointInPolygon(pt, savedFencePoints)) {
-            QMessageBox::warning(this, "警告", QString("铁鞋%1超出电子围栏！").arg(lng));
-            // return;
+            QMessageBox::warning(this, "警告", QString("设备超出电子围栏！"));
         }
     }
 }
@@ -570,16 +545,13 @@ bool RailMapViewerWidget::pointInPolygon(const QPointF& point, const QList<QPoin
     return inside;
 }
 
+// =============== DeviceMarkerItem ===============
 DeviceMarkerItem::DeviceMarkerItem(const QString &name, double lat, double lon, QGraphicsScene *scene, RailMapViewerWidget *parent)
     : deviceName(name), latitude(lat), longitude(lon), parentWidget(parent) {
     devID = 0;
     setupUI();
-
-    // 设置组的坐标 (相对于场景)
     QPointF px = parentWidget->geoToPixel(lon, lat);
     setPos(px.x(), px.y());
-
-    // 初始化模拟参数 (示例数据)
     simulatedParams["设备ID"] = devID;
     simulatedParams["电量值"] = 100;
     simulatedParams["位置质量"] = 5;
@@ -594,92 +566,104 @@ DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, 
     latitude = shoeData.lat;
     longitude = shoeData.lng;
     setupUI();
-
-    // 设置组的坐标 (相对于场景)
     QPointF px = parentWidget->geoToPixel(shoeData.lng, shoeData.lat);
     setPos(px.x(), px.y());
-
-    // 初始化模拟参数 (示例数据)
     simulatedParams["设备ID"] = shoeData.wDevID;
     simulatedParams["在线状态"] = EnumtoString(shoeData.byOnline);
     simulatedParams["电量值"] = shoeData.byBatVal;
     simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
     simulatedParams["卫星数量"] = shoeData.byStarNum;
-
     setVisible(shoeData.byOnline != DeviceStatus::InCabinet);
 }
 
 void DeviceMarkerItem::setupUI()
 {
-    // 创建椭圆
-    QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(-4, -4, 8, 8);
-    ellipse->setPen(QPen(Qt::darkGreen, 2));
-    ellipse->setBrush(Qt::green);
-    ellipse->setFlag(QGraphicsItem::ItemIsSelectable); // 启用选择
-    ellipse->setFlag(QGraphicsItem::ItemIsFocusable); // 启用焦点
+    QColor fillColor, borderColor;
+    if (shoeData.byOnline == DeviceStatus::Online) {
+        fillColor = QColor("#00ffcc");
+        borderColor = QColor("#00ccaa");
+    } else if (shoeData.byOnline == DeviceStatus::Offline) {
+        fillColor = QColor("#aa5555");
+        borderColor = QColor("#884444");
+    } else {
+        fillColor = QColor("#555555");
+        borderColor = QColor("#444444");
+    }
 
-    // 创建文本
-    QGraphicsTextItem *text = new QGraphicsTextItem(deviceName);
-    text->setDefaultTextColor(Qt::green); // 可选：设置文字颜色
-    text->setPos(-5, -5); // 相对于椭圆的位置
+    QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(-5, -5, 10, 10);
+    ellipse->setPen(QPen(borderColor, 1.5));
+    QRadialGradient grad(-5, -5, 15);
+    grad.setColorAt(0, fillColor.lighter(130));
+    grad.setColorAt(1, fillColor);
+    ellipse->setBrush(grad);
+    ellipse->setFlag(QGraphicsItem::ItemIsSelectable);
+    ellipse->setFlag(QGraphicsItem::ItemIsFocusable);
 
-    // 将子项添加到组中
     addToGroup(ellipse);
-    addToGroup(text);
 }
 
 void DeviceMarkerItem::updateData(const ShoeData& data)
 {
-    latitude = shoeData.lat;
-    longitude = shoeData.lng;
-
+    latitude = data.lat;
+    longitude = data.lng;
     shoeData = data;
+
     simulatedParams.clear();
-    simulatedParams["设备ID"] = shoeData.wDevID;
-    simulatedParams["在线状态"] = EnumtoString(shoeData.byOnline);
-    simulatedParams["电量值"] = shoeData.byBatVal;
-    simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
-    simulatedParams["卫星数量"] = shoeData.byStarNum;
+    simulatedParams["设备ID"] = data.wDevID;
+    simulatedParams["在线状态"] = EnumtoString(data.byOnline);
+    simulatedParams["电量值"] = data.byBatVal;
+    simulatedParams["位置质量"] = EnumtoString(data.byPosQuality);
+    simulatedParams["卫星数量"] = data.byStarNum;
 
-    prevStatus_ = shoeData.byOnline;
-    setVisible(shoeData.byOnline != DeviceStatus::InCabinet);
+    setVisible(data.byOnline != DeviceStatus::InCabinet);
 
-    // 设置组的坐标 (相对于场景)
     QPointF px = parentWidget->geoToPixel(data.lng, data.lat);
     setPos(px.x(), px.y());
+
+    // 更新颜色
+    if (childItems().size() >= 1) {
+        QGraphicsEllipseItem* ellipse = dynamic_cast<QGraphicsEllipseItem*>(childItems()[0]);
+        if (ellipse) {
+            QColor fillColor, borderColor;
+            if (data.byOnline == DeviceStatus::Online) {
+                fillColor = QColor("#00ffcc");
+                borderColor = QColor("#00ccaa");
+            } else if (data.byOnline == DeviceStatus::Offline) {
+                fillColor = QColor("#aa5555");
+                borderColor = QColor("#884444");
+            } else {
+                fillColor = QColor("#555555");
+                borderColor = QColor("#444444");
+            }
+            ellipse->setPen(QPen(borderColor, 1.5));
+            QRadialGradient grad(-5, -5, 15);
+            grad.setColorAt(0, fillColor.lighter(130));
+            grad.setColorAt(1, fillColor);
+            ellipse->setBrush(grad);
+        }
+    }
 }
 
 void DeviceMarkerItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-    qDebug() << "DeviceMarkerItem clicked:" << deviceName;
     if(isShowingDetails) return;
-    // 调用父类处理默认行为 (如选择)
     QGraphicsItemGroup::mousePressEvent(event);
-
-    // 显示设备属性信息
     if (event->button() == Qt::LeftButton) {
-        // 使用 QTimer::singleShot 延迟显示对话框
         isShowingDetails = true;
         QTimer::singleShot(0, [this]() {
             DeviceDetailsDialog dialog(deviceName, latitude, longitude, simulatedParams, nullptr);
-            dialog.exec(); // 模态显示，无系统声音
-
-            // 对话框关闭后，重置标志位
+            dialog.exec();
             isShowingDetails = false;
-            qDebug() << "DeviceMarkerItem exit";
         });
     }
 }
 
+// =============== ShoeCabinetItem ===============
 ShoeCabinetItem::ShoeCabinetItem(const QString &name, double lat, double lon, QGraphicsScene *scene, RailMapViewerWidget *parent)
     : deviceName(name), latitude(lat), longitude(lon), parentWidget(parent) {
     cabinetData.wDevID = 0;
     setupUI();
-
-    // 设置组的坐标 (相对于场景)
     QPointF px = parentWidget->geoToPixel(lon, lat);
     setPos(px.x(), px.y());
-
-    // 初始化模拟参数 (示例数据)
     simulatedParams["设备ID"] = cabinetData.wDevID;
     simulatedParams["仓位数"] = 6;
     simulatedParams["仓位状态"] = "未知";
@@ -690,90 +674,76 @@ void ShoeCabinetItem::updateData(const CabinetData& data)
 {
     cabinetData = data;
     simulatedParams.clear();
-    simulatedParams["设备ID"] = cabinetData.wDevID;
-    simulatedParams["仓位数"] = cabinetData.byStoreNum;
-    // simulatedParams["在线状态"] = static_cast<quint8>(cabinetData.byOnline);
-    simulatedParams["在线状态"] = EnumtoString(cabinetData.byOnline);
-    if (cabinetData.byStoreNum == 0)
-        simulatedParams["仓位状态"] = "未知";
-    else {
-        for (int i = 0; i < cabinetData.abyStatus.size(); ++i) {
-            StorageStatus value = static_cast<StorageStatus>(cabinetData.abyStatus.at(i)); // 推荐用 at() 避免写时复制
-            QString key = QString("仓位%1状态").arg(i);
-            // simulatedParams[key] = value;
+    simulatedParams["设备ID"] = data.wDevID;
+    simulatedParams["仓位数"] = data.byStoreNum;
+    simulatedParams["在线状态"] = EnumtoString(data.byOnline);
+    if (data.byStoreNum > 0 && data.abyStatus.size() >= data.byStoreNum) {
+        for (int i = 0; i < data.byStoreNum; ++i) {
+            StorageStatus value = static_cast<StorageStatus>(data.abyStatus.at(i));
+            QString key = QString("仓位%1状态").arg(i+1);
             simulatedParams[key] = EnumtoString(value);
         }
     }
+    // 更新颜色（如果需要根据状态变化）
 }
 
 void ShoeCabinetItem::setupUI()
 {
-    // 创建矩形
-    QGraphicsRectItem *rect = new QGraphicsRectItem(-2, -2, 4, 4);
-    rect->setPen(QPen(Qt::darkGreen, 1));
-    rect->setBrush(Qt::green);
-    rect->setFlag(QGraphicsItem::ItemIsSelectable); // 启用选择
-    rect->setFlag(QGraphicsItem::ItemIsFocusable); // 启用焦点
+    QColor fillColor = QColor("#b967ff");
+    QColor borderColor = QColor("#9955dd");
 
-    // 创建文本
-    // QGraphicsTextItem *text = new QGraphicsTextItem(deviceName);
-    // text->setDefaultTextColor(Qt::green); // 可选：设置文字颜色
-    // text->setPos(5, -5); // 相对于矩形的位置
+    QGraphicsRectItem *rect = new QGraphicsRectItem(-4, -4, 8, 8);
+    rect->setPen(QPen(borderColor, 1.5));
+    QRadialGradient grad(-4, -4, 12);
+    grad.setColorAt(0, QColor("#ffffff"));
+    grad.setColorAt(1, fillColor);
+    rect->setBrush(grad);
+    rect->setFlag(QGraphicsItem::ItemIsSelectable);
+    rect->setFlag(QGraphicsItem::ItemIsFocusable);
 
-    // 将子项添加到组中
     addToGroup(rect);
-    // addToGroup(text);
 }
 
 void ShoeCabinetItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-    qDebug() << "ShoeCabinetItem clicked:" << deviceName;
     if(isShowingDetails) return;
-    // 调用父类处理默认行为 (如选择)
     QGraphicsItemGroup::mousePressEvent(event);
-
-    // 显示设备属性信息
     if (event->button() == Qt::LeftButton) {
-        // 使用 QTimer::singleShot 延迟显示对话框
         isShowingDetails = true;
         QTimer::singleShot(0, [this]() {
             DeviceDetailsDialog dialog(deviceName, latitude, longitude, simulatedParams, nullptr);
-            dialog.exec(); // 模态显示，无系统声音
-
-            // 对话框关闭后，重置标志位
+            dialog.exec();
             isShowingDetails = false;
-            qDebug() << "DeviceMarkerItem exit";
         });
     }
 }
 
+// =============== DeviceDetailsDialog ===============
 DeviceDetailsDialog::DeviceDetailsDialog(const QString &name, double lat, double lon,
                                          const QMap<QString, QVariant> &params, QWidget *parent)
     : QDialog(parent) {
     setWindowTitle("设备属性");
-    setModal(true); // 设置为模态对话框
+    setModal(true);
+    setStyleSheet("background-color: #0f0f1f; color: #00ffcc;");
 
     QVBoxLayout *layout = new QVBoxLayout(this);
 
     QString info = QString("<b>设备名称:</b> %1<br>").arg(name);
     info += QString("<b>经度:</b> %1<br>").arg(lon, 0, 'f', 6);
     info += QString("<b>纬度:</b> %1<br>").arg(lat, 0, 'f', 6);
-    // info += "<b>模拟参数:</b><br>";
 
     for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
         info += QString("<b>%1:</b> %2<br>").arg(it.key()).arg(it.value().toString());
     }
 
-    infoLabel = new QLabel(info);
-    infoLabel->setTextFormat(Qt::RichText); // 支持 HTML 格式
+    QLabel *infoLabel = new QLabel(info);
+    infoLabel->setTextFormat(Qt::RichText);
+    infoLabel->setStyleSheet("background-color: #1a1a2e; padding: 10px; border-radius: 5px;");
     layout->addWidget(infoLabel);
 
     QPushButton *okButton = new QPushButton("确定");
-    connect(okButton, &QPushButton::clicked, this, &DeviceDetailsDialog::onOkClicked);
+    okButton->setStyleSheet("background-color: #4a6aff; color: white; padding: 5px;");
+    connect(okButton, &QPushButton::clicked, this, &DeviceDetailsDialog::accept);
     layout->addWidget(okButton);
 
     setLayout(layout);
-}
-
-void DeviceDetailsDialog::onOkClicked() {
-    accept(); // 关闭对话框并返回 Accepted
 }

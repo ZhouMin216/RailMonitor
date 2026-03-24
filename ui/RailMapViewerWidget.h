@@ -168,7 +168,7 @@ public:
                                  const QMap<QString, QVariant> &params, QWidget *parent = nullptr);
 
 private slots:
-    void onOkClicked();
+    // void onOkClicked();
 
 private:
     QLabel *infoLabel;

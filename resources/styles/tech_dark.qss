@@ -1,0 +1,65 @@
+/* resources/styles/tech_dark.qss */
+QWidget {
+    background-color: #0d0d1a;
+    color: #e0e0ff;
+    font-family: "Consolas", "Microsoft YaHei", sans-serif;
+}
+
+#MainWindow {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0a0a16, stop:1 #121225);
+}
+
+QPushButton {
+    border: none;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 14px;
+    border-radius: 8px;
+    background-color: transparent;
+    color: #a0b0ff;
+}
+
+QPushButton:hover {
+    background-color: rgba(60, 120, 255, 0.2);
+}
+
+QPushButton:checked {
+    background-color: rgba(0, 200, 255, 0.3);
+    color: white;
+    border-left: 4px solid #00ccff;
+}
+
+#exitButton {
+    background-color: rgba(229, 62, 62, 0.2);
+    color: #ff8080;
+    font-weight: bold;
+    border-radius: 8px;
+}
+
+#exitButton:hover {
+    background-color: rgba(229, 62, 62, 0.4);
+}
+
+QLineEdit {
+    background-color: rgba(20, 20, 40, 0.7);
+    border: 1px solid #4a6aff;
+    border-radius: 6px;
+    padding: 8px;
+    color: #d0d8ff;
+}
+
+QTableWidget {
+    background-color: rgba(15, 15, 30, 0.8);
+    gridline-color: #2a2a4a;
+    alternate-background-color: rgba(25, 25, 45, 0.6);
+    border: 1px solid #3a3a6a;
+    border-radius: 8px;
+}
+
+QHeaderView::section {
+    background-color: rgba(30, 30, 60, 0.9);
+    color: #80d0ff;
+    padding: 6px;
+    border: none;
+    font-weight: bold;
+}
