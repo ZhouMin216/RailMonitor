@@ -11,32 +11,38 @@ IconShoe::IconShoe(quint16 id, quint16 cabinet_id, quint8 store_id)
     shoeData_.wDevID = shoe_id_;
 }
 
-ShoeCabinet::ShoeCabinet(quint16 id, quint8 store_num, QPointF pos)
-    : cabinet_id_(id), store_num_(store_num), pos_(pos){
+ShoeCabinet::ShoeCabinet(quint16 id, quint8 store_num, quint8 enable_store_num, QPointF pos)
+    : cabinet_id_(id), store_num_(store_num),
+      enable_store_num_(enable_store_num), pos_(pos){
     initStoreStatus();
 }
 
 void ShoeCabinet::initStoreStatus(){
-    data_.byStoreNum = store_num_;
+    data_.byStoreNum = enable_store_num_;
 
-    data_.abyStatus.resize(store_num_);
+    data_.abyStatus.resize(enable_store_num_);
     data_.abyStatus.fill(static_cast<quint8>(StorageStatus::Unregister));
 }
 
-QVector<quint16> ShoeCabinet::GetStoreShoeID(){
-    QVector<quint16> id_vec;
+QMap<quint8, quint16> ShoeCabinet::GetStoreShoeID(){
+    QMap<quint8, quint16> id_map;
     for (auto it = store_map_.constBegin(); it != store_map_.constEnd(); ++it) {
         auto shoe = it.value();
         if (!shoe) continue;
-        id_vec.push_back(shoe->GetShoeID());
+        id_map[it.key()] = shoe->GetShoeID();
     }
-    return id_vec;
+    return id_map;
 }
 
 bool ShoeCabinet::ShoeIsInStore(quint8 store_idx){
-    if (store_idx > data_.abyStatus.size() || store_idx == 0) return false;
+    // 将仓位下标转换成状态数组的下标
+    // 因为实际接收到的状态数据是根据实际配置的铁鞋数绑定的
+    // 例如：仓位数有6个，但是只有1-3-5绑定了铁鞋，所以状态数组只有3个状态数据
+    // store_idx_在鞋柜绑定铁鞋时记录了每一个仓位下标
+    int status_idx = store_idx_.indexOf(store_idx);
+    if (status_idx >= data_.abyStatus.size() || status_idx == -1) return false;
 
-    return data_.abyStatus.at(store_idx - 1) == 0x02; // StorageStatus::Online 在位
+    return data_.abyStatus.at(status_idx) == 0x02; // StorageStatus::Online 在位
 }
 
 DeviceManager::DeviceManager(QObject *parent)
@@ -80,10 +86,9 @@ void DeviceManager::loadConfig(){
         QPointF pos = QPointF(lng, lat);
         quint8 store_num = static_cast<quint16>(p["store_num"].toInt());
 
-        std::shared_ptr<ShoeCabinet> cabinet = std::make_shared<ShoeCabinet>(cabinet_id, store_num, pos);
-
         // --- 解析 store_arr 嵌套数组 ---
         QJsonArray storeArr = p["store_arr"].toArray();
+        std::shared_ptr<ShoeCabinet> cabinet = std::make_shared<ShoeCabinet>(cabinet_id, store_num,storeArr.size(), pos);
 
         for (const QJsonValue &storeVal : storeArr) {
             if (!storeVal.isObject()) continue;

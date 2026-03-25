@@ -82,7 +82,7 @@ void ShoeCabinetPage::updateFromDeviceManager(
             connect(btn, &QPushButton::clicked, this, [this, cabinet]() {
                 if (!cabinet) return;
                 auto data = cabinet->GetCabinetData();
-                showShoeDetailsDialog(cabinet->GetCabinetID(), data.abyStatus, cabinet->GetStoreShoeID());
+                showShoeDetailsDialog(cabinet->GetStoreNum(), cabinet->GetCabinetID(), data.abyStatus, cabinet->GetStoreShoeID());
             });
             table->setCellWidget(row, columnIndex(Column::DetailsButton), btn);
         }
@@ -90,7 +90,8 @@ void ShoeCabinetPage::updateFromDeviceManager(
     }
 }
 
-void ShoeCabinetPage::showShoeDetailsDialog(quint16 cabinetId, const QByteArray& statusArray, const QVector<quint16>& shoeIds)
+void ShoeCabinetPage::showShoeDetailsDialog(quint8 storeNum, quint16 cabinetId, const QByteArray& statusArray,
+                                            const QMap<quint8, quint16>& shoeIds)
 {
     QDialog dialog(this);
     dialog.setWindowTitle(QString("鞋柜 %1 仓位详情").arg(cabinetId));
@@ -106,15 +107,18 @@ void ShoeCabinetPage::showShoeDetailsDialog(quint16 cabinetId, const QByteArray&
     detailTable->horizontalHeader()->setStretchLastSection(true);
 
     auto store_shoe_id = shoeIds;
-    int storeNum = statusArray.size();
 
     detailTable->setRowCount(storeNum);
+    int status_idx = 0;
     for (int i = 0; i < storeNum; ++i) {
         int row = i;
         detailTable->setItem(row, 0, new QTableWidgetItem(QString::number(i + 1))); // 仓位从1开始
         detailTable->item(row, 0)->setTextAlignment(Qt::AlignCenter);
 
-        StorageStatus status = static_cast<StorageStatus>(statusArray.at(i));
+        StorageStatus status = StorageStatus::Unregister;
+        if (status_idx<statusArray.size() && store_shoe_id.contains(i+1)){
+            status = static_cast<StorageStatus>(statusArray.at(status_idx++));
+        }
         detailTable->setItem(row, 1, new QTableWidgetItem(EnumtoString(status)));
         if (status == StorageStatus::Unregister){
             detailTable->item(row, 1)->setForeground(Qt::red);
@@ -125,11 +129,10 @@ void ShoeCabinetPage::showShoeDetailsDialog(quint16 cabinetId, const QByteArray&
         } else {
             detailTable->item(row, 1)->setForeground(Qt::black);
         }
-
         detailTable->item(row, 1)->setTextAlignment(Qt::AlignCenter);
 
-        if (i < store_shoe_id.size()) {
-            detailTable->setItem(row, 2, new QTableWidgetItem(QString::number(store_shoe_id.at(i))));
+        if (store_shoe_id.contains(i+1)) {
+            detailTable->setItem(row, 2, new QTableWidgetItem(QString::number(store_shoe_id[i+1])));
         } else {
             detailTable->setItem(row, 2, new QTableWidgetItem("无"));
         }

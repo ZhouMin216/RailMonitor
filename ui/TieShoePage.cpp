@@ -59,6 +59,8 @@ void TieShoePage::updateFromDeviceManager(const QMap<quint16, std::shared_ptr<Ic
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::green);
         } else if (shoeData.byOnline == DeviceStatus::Offline){
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::gray);
+        } else if (shoeData.byOnline == DeviceStatus::InCabinet){
+            table->item(row, columnIndex(Column::Status))->setForeground(Qt::yellow);
         } else {
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::black);
         }

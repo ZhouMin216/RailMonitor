@@ -271,6 +271,7 @@ QPointF RailMapViewerWidget::pixelToGeo(qreal x, qreal y) {
 
 void RailMapViewerWidget::drawAll() {
     qDebug() << "------------- draw all ------------------------";
+    shoeMap.clear();
     scene->clear();
     drawTracks();
     drawBuildings();
@@ -425,6 +426,11 @@ void RailMapViewerWidget::clearFence() {
     savedFencePoints.clear();
     currentFencePoints.clear();
     isDrawingFence = false;
+    if (fenceItem) {
+        scene->removeItem(fenceItem);
+        delete fenceItem;
+        fenceItem = nullptr;
+    }
     drawAll();
     coordLabel->setText("电子围栏已清除");
 }

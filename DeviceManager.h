@@ -30,7 +30,7 @@ private:
 class ShoeCabinet
 {
 public:
-    ShoeCabinet(quint16 id, quint8 store_num, QPointF pos);
+    ShoeCabinet(quint16 id, quint8 store_num, quint8 enable_store_num, QPointF pos);
 
     const CabinetData& GetCabinetData() { return data_;}
     void SetData(const CabinetData& data) { data_ = data;}
@@ -38,9 +38,11 @@ public:
     quint8 GetStoreNum() { return store_num_;}
     void AddIconShoe(quint8 store_idx, std::shared_ptr<IconShoe> shoe){
         store_map_[store_idx] = shoe;
+        store_idx_ = store_map_.keys();
     }
     const QPointF& GetPos() { return pos_;}
-    QVector<quint16> GetStoreShoeID();
+    // 获取仓位和铁鞋的绑定关系，key:仓位下标，value:铁鞋ID
+    QMap<quint8, quint16> GetStoreShoeID();
     bool ShoeIsInStore(quint8 store_idx); // 判断仓位上的鞋是否在位
 private:
     void initStoreStatus();
@@ -49,10 +51,12 @@ private:
     quint16 cabinet_id_; // 鞋柜ID
     CabinetData data_;
     quint8 store_num_; // 仓位数量
+    quint8 enable_store_num_; // 实际配置了铁鞋的仓位数量
     QVector<quint16> store_shoe_id_; // 仓位存储的铁鞋id
     QMap<quint8, std::shared_ptr<IconShoe>> store_map_; // key是仓位序号 1~N
 
     QPointF pos_; // 经纬度
+    QList<quint8> store_idx_;
 };
 
 

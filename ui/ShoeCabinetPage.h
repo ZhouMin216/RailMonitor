@@ -38,9 +38,10 @@ public:
 
 private:
     void showShoeDetailsDialog(
+        quint8 storeNum,
         quint16 cabinetId,
         const QByteArray& statusArray,
-        const QVector<quint16>& shoeIds);
+        const QMap<quint8, quint16>& shoeIds);
 
 public slots:
     void updateFromDeviceManager(
