@@ -6,7 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Sql)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Sql Svg)
 
 qt6_add_executable(RailMonitor
     main.cpp
@@ -27,6 +27,8 @@ qt6_add_executable(RailMonitor
     DeviceManager.h DeviceManager.cpp
 
     resources.qrc
+    ui/LoginDialog.h
+    ui/LoginDialog.cpp
 )
 
 target_include_directories(RailMonitor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -36,4 +38,5 @@ target_link_libraries(RailMonitor PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::Sql
+    Qt6::Svg
 )

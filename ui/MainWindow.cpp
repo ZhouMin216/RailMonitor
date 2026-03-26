@@ -46,6 +46,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     device_mgr_->updateCabinet();
     device_mgr_->updateIconShoe();
+
+    loginDialog = new LoginDialog(this);
+    QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {
+        loginDialog->hide();           // 隐藏登录框
+    });
+    loginDialog->show();
 }
 
 void MainWindow::applyFlatStyle() {

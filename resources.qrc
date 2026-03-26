@@ -1,6 +1,10 @@
-<!DOCTYPE RCC>
-<RCC version="1.0">
-<qresource prefix="/styles">
-    <file alias="tech_dark.qss">resources/styles/tech_dark.qss</file>
-</qresource>
+<RCC>
+    <qresource prefix="/styles">
+        <file alias="tech_dark.qss">resources/styles/tech_dark.qss</file>
+    </qresource>
+    <qresource prefix="/icon">
+        <file alias="logo.svg">resources/assets/logo.svg</file>
+        <file alias="password.svg">resources/assets/password.svg</file>
+        <file alias="user.svg">resources/assets/user.svg</file>
+    </qresource>
 </RCC>

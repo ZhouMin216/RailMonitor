@@ -12,6 +12,7 @@
 #include "network/NetworkManager.h"
 #include "database/DatabaseManager.h"
 #include "DeviceManager.h"
+#include "LoginDialog.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -44,4 +45,6 @@ private:
     DeviceManager* device_mgr_;
 
     QPushButton *mapBtn, *tieShoeBtn, *cabinetBtn, *netBtn, *exitBtn;
+
+    LoginDialog *loginDialog;
 };
