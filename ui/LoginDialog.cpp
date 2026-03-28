@@ -15,34 +15,8 @@
 #include <QGuiApplication>
 #include <QIcon>
 #include <QLabel>
-#include <QSvgRenderer>
 #include <QDate>
-
-static QPixmap coloredSvg(const QString &path, const QColor &color, int w, int h)
-{
-    QSvgRenderer renderer(path);
-    if (!renderer.isValid()) {
-        qWarning() << "Invalid SVG:" << path;
-        return QPixmap();
-    }
-
-    // 创建透明 pixmap
-    QPixmap pixmap(w, h);
-    pixmap.fill(Qt::transparent); // 透明底
-
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-
-    // 渲染 SVG 到 pixmap（此时是黑色，但保留 alpha）
-    renderer.render(&painter);
-
-    // 用 CompositionMode_SourceIn 填充颜色（只影响非透明部分）
-    // 先用指定颜色填充整个区域（作为“画笔”）
-    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    painter.fillRect(pixmap.rect(), color);
-
-    return pixmap;
-}
+#include "utils.h"
 
 LoginDialog::LoginDialog(QWidget *parent)
     : QDialog(parent)
@@ -61,16 +35,6 @@ LoginDialog::LoginDialog(QWidget *parent)
 
     // 铁路 SVG 图标
     QLabel *railIcon = new QLabel;
-    // QIcon railSvg(":/icon/logo.svg");
-    // railIcon->setPixmap(railSvg.pixmap(48, 48)); // 渲染为 48x48 像素
-    // railIcon->setAlignment(Qt::AlignCenter);
-    // railIcon->setStyleSheet(R"(
-    //     background: rgba(56, 189, 248, 0.2);
-    //     border: 1px solid rgba(56, 189, 248, 0.3);
-    //     border-radius: 16px;
-    //     padding: 8px;
-    // )");
-
     railIcon->setPixmap(coloredSvg(":/icon/logo.svg", QColor("#38BDF8"), 48,48));
     railIcon->setAttribute(Qt::WA_TranslucentBackground); // ← 透明背景
     // railIcon->setAutoFillBackground(false);
@@ -169,8 +133,7 @@ LoginDialog::LoginDialog(QWidget *parent)
 
     // 版权信息
     QString currentDate = QDate::currentDate().toString("yyyy-MM-dd");
-    QLabel *copyright = new QLabel(QString("© 2026 智慧轨道交通安全科技中心 3.0.4\nSystem Date: %1")
-                                       .arg(currentDate));
+    QLabel *copyright = new QLabel(QString("System Date: %1").arg(currentDate));
     copyright->setAlignment(Qt::AlignCenter);
     copyright->setStyleSheet(R"(font-size: 10px; color: #64748b; margin-top: 24px; border: none; background: transparent;)");
 

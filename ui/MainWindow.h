@@ -26,6 +26,7 @@ private slots:
     void onDisconnectRequested();
     void confirmExit();
     void updateNetworkStatus(NetworkManager::ConnectionState state);
+    void updateTime();
 
 private:
     void applyFlatStyle();
@@ -47,4 +48,5 @@ private:
     QPushButton *mapBtn, *tieShoeBtn, *cabinetBtn, *netBtn, *exitBtn;
 
     LoginDialog *loginDialog;
+    QLabel *timeLabel; // 时间显示标签
 };

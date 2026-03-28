@@ -1,6 +1,6 @@
 /* resources/styles/tech_dark.qss */
 QWidget {
-    background-color: #0d0d1a;
+    background-color: rgba(15, 23, 42, 0.85);
     color: #e0e0ff;
     font-family: "Consolas", "Microsoft YaHei", sans-serif;
 }

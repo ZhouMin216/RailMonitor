@@ -68,7 +68,7 @@ private:
 
     QPointF pixelToGeo(qreal x, qreal y);
     bool pointInPolygon(const QPointF& point, const QList<QPointF>& polygon);
-
+    void createLegend();
     QGraphicsScene *scene;
     QGraphicsView *view;
     QLineEdit *lngInput, *latInput, *rotateInput;
@@ -95,6 +95,8 @@ private:
     QList<QPointF> currentFencePoints;      // 正在绘制的围栏点（经纬度）
     QList<QPointF> savedFencePoints;        // 已保存的围栏（从DB加载）
     QGraphicsPolygonItem* fenceItem = nullptr;
+    QGraphicsItemGroup* legendGroup = nullptr;
+
     bool isDrawingFence = false;
 
     QPushButton* startFenceBtn;

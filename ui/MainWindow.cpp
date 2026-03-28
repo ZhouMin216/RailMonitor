@@ -5,8 +5,7 @@
 
 #include "protocol/TimeSyncResponse.h"
 #include "protocol/WhitelistSync.h"
-
-#include <QElapsedTimer>
+#include "utils.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     networkManager = new NetworkManager(this);
@@ -71,82 +70,6 @@ void MainWindow::applyFlatStyle() {
 
     // 确保主窗口能被 #MainWindow 选中
     this->setObjectName("MainWindow");
-    return;
-    QString style = R"(
-        QMainWindow {
-            background-color: #f5f7fa;
-        }
-
-        /* 导航按钮通用样式 */
-        QPushButton {
-            border: none;
-            padding: 12px 16px;
-            /*text-align: left;*/
-            font-size: 14px;
-            border-radius: 6px;
-            background-color: transparent;
-            color: #4a5568;
-            outline: none;
-        }
-
-        /* 悬停效果 */
-        QPushButton:hover {
-            background-color: #e2e8f0;
-        }
-
-        /* 选中状态（高亮） */
-        QPushButton:checked {
-            background-color: #3182ce;
-            color: white;
-        }
-
-        /* 退出按钮特殊样式 */
-        QPushButton#exitButton {
-            background-color: #e53e3e;
-            color: white;
-            font-weight: bold;
-        }
-        QPushButton#exitButton:hover {
-            background-color: #c53030;
-        }
-
-        /* 页面内容背景 */
-        QStackedWidget {
-            background: #f5f7fa;
-            border: none;
-        }
-
-        QMessageBox {
-            background-color: #f5f7fa;
-            border: 1px solid #d0d0d0;
-            border-radius: 8px;
-        }
-        QMessageBox QLabel {
-            color: #333;
-            font-size: 13px;
-            padding: 8px 16px;
-        }
-        QMessageBox QPushButton {
-            width: 80px;
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            background: #4A90E2;
-            color: white;
-            font-weight: bold;
-        }
-        QMessageBox QPushButton:hover {
-            background: #357ABD;
-        }
-        QMessageBox QPushButton:pressed {
-            background: #2C66A3;
-        }
-    )";
-
-    // 给退出按钮设置 objectName 以便单独样式
-    exitBtn->setObjectName("exitButton");
-
-    this->setStyleSheet(style);
 }
 
 void MainWindow::setupUI() {
@@ -161,6 +84,47 @@ void MainWindow::setupUI() {
     contentStack->addWidget(tieShoePage);
     contentStack->addWidget(cabinetPage);
     contentStack->addWidget(netPage);
+
+    // ========== 添加顶部标题栏 ==========
+    QWidget *headerWidget = new QWidget;
+
+    // 主垂直布局：两行
+    QVBoxLayout *mainHeaderLayout = new QVBoxLayout(headerWidget);
+    mainHeaderLayout->setContentsMargins(10, 5, 10, 5);
+    mainHeaderLayout->setSpacing(4); // 行间距
+
+    // --- 第一行：Logo + 标题 ---
+    QWidget *titleRow = new QWidget;
+    QHBoxLayout *titleLayout = new QHBoxLayout(titleRow);
+    titleLayout->setContentsMargins(0, 0, 0, 0);
+    titleLayout->setSpacing(8);
+
+    // Logo 图标
+    QLabel *logoLabel = new QLabel;
+    logoLabel->setPixmap(coloredSvg(":/icon/logo.svg", QColor("#38BDF8"), 32,32));
+    logoLabel->setAttribute(Qt::WA_TranslucentBackground); // ← 透明背景
+
+    // 软件标题
+    QLabel *titleLabel = new QLabel("管理中心");
+    titleLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: white;");
+    titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    titleLayout->addWidget(logoLabel);
+    titleLayout->addWidget(titleLabel);
+    titleLayout->addStretch(); // 防止拉伸，保持靠左
+
+    // --- 第二行：系统时间 ---
+    // 系统时间标签
+    timeLabel = new QLabel();
+    timeLabel->setStyleSheet("color: #ccc; font-size: 12px;");
+    timeLabel->setAlignment(Qt::AlignCenter);
+    updateTime(); // 初始化时间
+
+    // 添加到主垂直布局
+    mainHeaderLayout->addWidget(titleRow);
+    mainHeaderLayout->addWidget(timeLabel);
+    mainHeaderLayout->addStretch(); // 可选：防止时间被推下去
+
 
     // 创建导航按钮（用于互斥选中）
     mapBtn = new QPushButton("地图监控");
@@ -206,10 +170,23 @@ void MainWindow::setupUI() {
 
     // 左侧整体容器：导航 + 退出
     QWidget *leftSidebar = new QWidget;
-    leftSidebar->setFixedWidth(140); // 固定宽度
+    leftSidebar->setFixedWidth(150); // 固定宽度
     QVBoxLayout *sidebarLayout = new QVBoxLayout(leftSidebar);
     sidebarLayout->setContentsMargins(10, 10, 10, 10);
     sidebarLayout->setSpacing(0);
+    sidebarLayout->addWidget(headerWidget); // 头部
+
+    sidebarLayout->addSpacing(30);
+
+    // 2. 添加横线分隔符
+    QLabel *separator = new QLabel;
+    separator->setFixedHeight(1); // 高度 1px
+    separator->setStyleSheet("background-color: #444; border: none; margin: 6px 0;"); // 灰色线 + 上下间距
+    sidebarLayout->addWidget(separator);
+
+    sidebarLayout->addSpacing(30);
+
+    // sidebarLayout->setSpacing(8);
     sidebarLayout->addWidget(navButtonArea, 1); // 占据上部空间
     sidebarLayout->addWidget(exitBtn, 0, Qt::AlignBottom); // 固定在底部
 
@@ -226,6 +203,11 @@ void MainWindow::setupUI() {
 
     // 应用扁平化样式表
     applyFlatStyle();
+
+    // 启动定时器刷新时间
+    QTimer *timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &MainWindow::updateTime);
+    timer->start(1000); // 每秒更新一次
 }
 
 void MainWindow::switchPage(int index) {
@@ -312,4 +294,10 @@ void MainWindow::updateNetworkStatus(NetworkManager::ConnectionState state) {
     } else {
         statusLabel->setStyleSheet("color: red; padding: 4px 8px;");
     }
+}
+
+void MainWindow::updateTime() {
+    QDateTime now = QDateTime::currentDateTime();
+    QString timeStr = now.toString("yyyy-MM-dd\nHH:mm:ss");
+    timeLabel->setText(timeStr);
 }

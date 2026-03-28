@@ -29,6 +29,7 @@ qt6_add_executable(RailMonitor
     resources.qrc
     ui/LoginDialog.h
     ui/LoginDialog.cpp
+    utils.h
 )
 
 target_include_directories(RailMonitor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

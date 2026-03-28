@@ -27,7 +27,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     view = new QGraphicsView(scene);
     view->setRenderHint(QPainter::Antialiasing, true);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    view->setStyleSheet("background: #000010; border: none;"); // 深空黑背景
+    view->setStyleSheet("background: #020617; border: none;"); // 深空黑背景
 
     // 隐藏滚动条
     view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -104,14 +104,13 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     mainLayout->addWidget(controlWidget);
 
     loadConfig();
-    drawAll();
+    // drawAll();
 
-    // 👇 关键：延迟执行 fitInView
+    // 延迟执行 fitInView
     QTimer::singleShot(0, this, [this]() {
         view->setTransform(QTransform().rotate(-24.5));
         view->fitInView(scene->sceneRect(), Qt::KeepAspectRatioByExpanding);
-        view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum());
-        // 注意：此时滚动条已被隐藏，setValue 无意义，可删掉
+        // view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum());
     });
 
     // 启动脉冲动画（局部，避免全局依赖）
@@ -273,10 +272,15 @@ void RailMapViewerWidget::drawAll() {
     qDebug() << "------------- draw all ------------------------";
     shoeMap.clear();
     scene->clear();
+    legendGroup = nullptr;
+    fenceItem = nullptr;
+
     drawTracks();
     drawBuildings();
     drawFence();
     drawShoeCabinet();
+
+    createLegend();
 }
 
 void RailMapViewerWidget::drawTracks() {
@@ -566,6 +570,138 @@ bool RailMapViewerWidget::pointInPolygon(const QPointF& point, const QList<QPoin
         }
     }
     return inside;
+}
+
+void RailMapViewerWidget::createLegend() {
+    if (legendGroup) {
+        if (legendGroup->scene() == scene)
+            scene->removeItem(legendGroup);
+        delete legendGroup;
+        legendGroup = nullptr;
+    }
+
+    legendGroup = new QGraphicsItemGroup;
+
+    // 设置图例背景（半透明深色面板）
+    QRectF bgRect(0, 0, 180, 140);
+    QPainterPath path;
+    path.addRoundedRect(bgRect, 6, 6);
+    QGraphicsPathItem  *bg = new QGraphicsPathItem(path);
+    bg->setBrush(QColor(20, 20, 30, 200));
+    bg->setPen(QPen(QColor(60, 60, 80), 1));
+    // bg->setRadius(6); // 圆角
+    legendGroup->addToGroup(bg);
+
+    int y = 15; // 起始 Y 坐标
+    const int lineHeight = 22;
+    const int iconX = 10;
+    const int textX = 30;
+
+    QFont font("Consolas", 9);
+    font.setBold(false);
+
+    // 1. 电子围栏：红色虚线
+    {
+        QPen pen(QColor("#ff0000"), 2.5, Qt::DashLine);
+        QGraphicsLineItem *line = new QGraphicsLineItem(iconX, y + 8, iconX + 16, y + 8);
+        line->setPen(pen);
+        legendGroup->addToGroup(line);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("电子围栏");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y);
+        legendGroup->addToGroup(text);
+        y += lineHeight;
+    }
+
+    // 2. 轨道：青绿色实线（master）
+    {
+        QPen pen(QColor("#00ffff"), 1.2);
+        QGraphicsLineItem *line = new QGraphicsLineItem(iconX, y + 8, iconX + 16, y + 8);
+        line->setPen(pen);
+        legendGroup->addToGroup(line);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("轨道");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y);
+        legendGroup->addToGroup(text);
+        y += lineHeight;
+    }
+
+    // 3. 建筑物：蓝紫色填充多边形（简化为矩形）
+    {
+        QBrush brush(QColor(20, 20, 40, 180));
+        QPen pen(QColor("#4a6aff"), 2.0);
+        QGraphicsRectItem *rect = new QGraphicsRectItem(iconX, y + 2, 16, 12);
+        rect->setPen(pen);
+        rect->setBrush(brush);
+        legendGroup->addToGroup(rect);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("建筑物");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y);
+        legendGroup->addToGroup(text);
+        y += lineHeight;
+    }
+
+    // 4. 鞋柜：紫色小矩形
+    {
+        QColor fillColor = QColor("#b967ff");
+        QColor borderColor = QColor("#9955dd");
+        QRadialGradient grad(iconX, y + 6, 12);
+        grad.setColorAt(0, QColor("#ffffff"));
+        grad.setColorAt(1, fillColor);
+
+        QGraphicsRectItem *rect = new QGraphicsRectItem(iconX - 2, y + 2, 8, 8);
+        rect->setPen(QPen(borderColor, 1.5));
+        rect->setBrush(grad);
+        legendGroup->addToGroup(rect);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("鞋柜");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y);
+        legendGroup->addToGroup(text);
+        y += lineHeight;
+    }
+
+    // 5. 铁鞋：圆形（在线状态：青绿色）
+    {
+        QColor fillColor = QColor("#00ffcc");
+        QColor borderColor = QColor("#00ccaa");
+        QRadialGradient grad(iconX, y + 6, 15);
+        grad.setColorAt(0, fillColor.lighter(130));
+        grad.setColorAt(1, fillColor);
+
+        QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX - 5, y + 1, 10, 10);
+        ellipse->setPen(QPen(borderColor, 1.5));
+        ellipse->setBrush(grad);
+        legendGroup->addToGroup(ellipse);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y);
+        legendGroup->addToGroup(text);
+    }
+
+    // 关键：让图例不随地图变换（缩放/旋转）而变化
+    legendGroup->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+    legendGroup->setZValue(1000); // 确保在最上层
+
+    scene->addItem(legendGroup);
+
+    QSize vp = view->size();
+    qreal legendWidth = legendGroup->boundingRect().width(); // 获取图例的实际宽度
+    qreal legendHeight = legendGroup->boundingRect().height(); // 获取图例的实际高度
+
+    legendGroup->setPos(
+        std::max(0.0, vp.width() - legendWidth * 2 ),
+        std::max(0.0,  vp.height() + legendHeight * 1.5)
+        );
 }
 
 // =============== DeviceMarkerItem ===============
