@@ -49,6 +49,7 @@ QLineEdit {
 }
 
 QTableWidget {
+    font-size: 14pt;
     background-color: rgba(15, 15, 30, 0.8);
     gridline-color: #2a2a4a;
     alternate-background-color: rgba(25, 25, 45, 0.6);
@@ -56,7 +57,12 @@ QTableWidget {
     border-radius: 8px;
 }
 
+QTableWidget::item:selected {
+    background-color: rgba(0, 116, 217, 0.6);
+}
+
 QHeaderView::section {
+    font-size: 16pt;
     background-color: rgba(30, 30, 60, 0.9);
     color: #80d0ff;
     padding: 6px;

@@ -20,6 +20,7 @@
 #include <QGraphicsDropShadowEffect>  // 新增
 #include <QRadialGradient>            // 新增
 #include <QScrollBar>
+#include "DeviceManager.h"
 
 RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     : QWidget(parent) {
@@ -448,6 +449,27 @@ void RailMapViewerWidget::updateCabinets(const QList<CabinetData>& data)
     }
 }
 
+void RailMapViewerWidget::dataUpdated(){
+    QMap<quint16, std::shared_ptr<IconShoe>> shoeMap = DeviceManager::instance()->getShoeMap();
+    if (!shoeMap.isEmpty()) {
+        QList<ShoeData> data_list;
+        for (auto it = shoeMap.constBegin(); it != shoeMap.constEnd(); ++it) {
+            quint16 key = it.key();
+            std::shared_ptr<IconShoe> shoe = it.value();
+
+            if (!shoe) continue; // 安全检查
+
+            ShoeData data = shoe->GetShoeData();
+            if (data.byOnline != ShoeStatus::Unregister && data.byOnline != ShoeStatus::NoEnter)
+                data_list.push_back(data);
+        }
+        updateShoes(data_list);
+    }
+
+    QMap<quint16, std::shared_ptr<ShoeCabinet>> cabinetMap = DeviceManager::instance()->getCabinetMap();
+    if (cabinetMap.isEmpty()) return;
+}
+
 void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
 {
     QStringList outOfFenceIds;
@@ -732,16 +754,16 @@ DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, 
     simulatedParams["电量值"] = shoeData.byBatVal;
     simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
     simulatedParams["卫星数量"] = shoeData.byStarNum;
-    setVisible(shoeData.byOnline != DeviceStatus::InCabinet);
+    setVisible(shoeData.byOnline != ShoeStatus::InCabinet);
 }
 
 void DeviceMarkerItem::setupUI()
 {
     QColor fillColor, borderColor;
-    if (shoeData.byOnline == DeviceStatus::Online) {
+    if (shoeData.byOnline == ShoeStatus::Online) {
         fillColor = QColor("#00ffcc");
         borderColor = QColor("#00ccaa");
-    } else if (shoeData.byOnline == DeviceStatus::Offline) {
+    } else if (shoeData.byOnline == ShoeStatus::Offline) {
         fillColor = QColor("#aa5555");
         borderColor = QColor("#884444");
     } else {
@@ -774,7 +796,11 @@ void DeviceMarkerItem::updateData(const ShoeData& data)
     simulatedParams["位置质量"] = EnumtoString(data.byPosQuality);
     simulatedParams["卫星数量"] = data.byStarNum;
 
-    setVisible(data.byOnline != DeviceStatus::InCabinet);
+    if (data.byOnline == ShoeStatus::InCabinet){
+        setVisible(false);
+        return;
+    }
+    setVisible(true);
 
     QPointF px = parentWidget->geoToPixel(data.lng, data.lat);
     setPos(px.x(), px.y());
@@ -784,10 +810,10 @@ void DeviceMarkerItem::updateData(const ShoeData& data)
         QGraphicsEllipseItem* ellipse = dynamic_cast<QGraphicsEllipseItem*>(childItems()[0]);
         if (ellipse) {
             QColor fillColor, borderColor;
-            if (data.byOnline == DeviceStatus::Online) {
+            if (data.byOnline == ShoeStatus::Online) {
                 fillColor = QColor("#00ffcc");
                 borderColor = QColor("#00ccaa");
-            } else if (data.byOnline == DeviceStatus::Offline) {
+            } else if (data.byOnline == ShoeStatus::Offline) {
                 fillColor = QColor("#aa5555");
                 borderColor = QColor("#884444");
             } else {

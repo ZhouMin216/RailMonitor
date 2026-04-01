@@ -11,16 +11,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     networkManager = new NetworkManager(this);
     m_databaseManager = new DatabaseManager(this);
 
-    device_mgr_ = new DeviceManager(this);
-    device_mgr_->loadConfig();
+    // device_mgr_ = new DeviceManager(this);
+    // device_mgr_->loadConfig();
+
+    DeviceManager::instance()->loadConfig();
 
     setupUI();
     setupStatusBar();
 
-    connect(device_mgr_, &DeviceManager::shoeCabinetUpdated, cabinetPage, &ShoeCabinetPage::updateFromDeviceManager);
-    connect(device_mgr_, &DeviceManager::iconShoeUpdated, tieShoePage, &TieShoePage::updateFromDeviceManager);
-    connect(networkManager, &NetworkManager::cabinetData, device_mgr_, &DeviceManager::updateCabinetStatus);
-    connect(networkManager, &NetworkManager::shoeData, device_mgr_, &DeviceManager::updateShoeStatus);
+    // connect(device_mgr_, &DeviceManager::shoeCabinetUpdated, cabinetPage, &ShoeCabinetPage::updateFromDeviceManager);
+    // connect(device_mgr_, &DeviceManager::iconShoeUpdated, tieShoePage, &TieShoePage::updateFromDeviceManager);
+    // connect(networkManager, &NetworkManager::cabinetData, device_mgr_, &DeviceManager::updateCabinetStatus);
+    // connect(networkManager, &NetworkManager::shoeData, device_mgr_, &DeviceManager::updateShoeStatus);
+
+    connect(networkManager, &NetworkManager::statusDataUpdated, cabinetPage, &ShoeCabinetPage::dataUpdated);
+    connect(networkManager, &NetworkManager::statusDataUpdated, tieShoePage, &TieShoePage::dataUpdated);
+    connect(networkManager, &NetworkManager::statusDataUpdated, mapPage, &RailMapViewerWidget::dataUpdated);
+
 
     connect(mapPage, &RailMapViewerWidget::getGeoFence, m_databaseManager, &DatabaseManager::handleGetGeoFence);
     connect(mapPage, &RailMapViewerWidget::saveGeoFence, m_databaseManager, &DatabaseManager::handleSaveGeoFence);
@@ -33,8 +40,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         // 可选：提示用户已发现服务器
     });
 
-    connect(networkManager, &NetworkManager::cabinetData, mapPage, &RailMapViewerWidget::updateCabinets);
-    connect(device_mgr_, &DeviceManager::shoeData, mapPage, &RailMapViewerWidget::updateShoes);
+    // connect(networkManager, &NetworkManager::cabinetData, mapPage, &RailMapViewerWidget::updateCabinets);
+    // connect(device_mgr_, &DeviceManager::shoeData, mapPage, &RailMapViewerWidget::updateShoes);
 
     m_databaseManager->initDatabase();
 
@@ -43,14 +50,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     mapPage->loadGeoFence();
 
-    device_mgr_->updateCabinet();
-    device_mgr_->updateIconShoe();
+    // device_mgr_->updateCabinet();
+    // device_mgr_->updateIconShoe();
 
-    loginDialog = new LoginDialog(this);
-    QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {
-        loginDialog->hide();           // 隐藏登录框
-    });
-    loginDialog->show();
+    cabinetPage->dataUpdated();
+    tieShoePage->dataUpdated();
+
+    // loginDialog = new LoginDialog(this);
+    // QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {
+    //     loginDialog->hide();           // 隐藏登录框
+    // });
+    // loginDialog->show();
 }
 
 void MainWindow::applyFlatStyle() {

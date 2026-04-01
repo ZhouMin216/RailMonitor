@@ -1,14 +1,14 @@
 #include "DeviceParser.h"
 #include <QDebug>
 
-// DeviceStatus -> string
-QString EnumtoString(DeviceStatus status) {
+// ShoeStatus -> string
+QString EnumtoString(ShoeStatus status) {
     switch (status) {
-    case DeviceStatus::Offline: return QStringLiteral("离线");
-    case DeviceStatus::Online:  return QStringLiteral("在线");
-    case DeviceStatus::InCabinet:  return QStringLiteral("在柜");
-    case DeviceStatus::Unregister:  return QStringLiteral("未注册");
-    case DeviceStatus::NoEnter:  return QStringLiteral("未录入");
+    case ShoeStatus::Offline: return QStringLiteral("离线");
+    case ShoeStatus::Online:  return QStringLiteral("在线");
+    case ShoeStatus::InCabinet:  return QStringLiteral("在柜");
+    case ShoeStatus::Unregister:  return QStringLiteral("未注册");
+    case ShoeStatus::NoEnter:  return QStringLiteral("未录入");
     default: return QStringLiteral("未知");
     }
 }
@@ -29,6 +29,7 @@ QString EnumtoString(StorageStatus status) {
     case StorageStatus::Online:  return QStringLiteral("铁鞋在位");
     case StorageStatus::Unusual:  return QStringLiteral("异常");
     case StorageStatus::Unregister: return QStringLiteral("未注册");
+    case StorageStatus::PosFault: return QStringLiteral("错位");
     default: return "未知";
     }
 }
@@ -58,7 +59,7 @@ double convertDmToDecimal(qint16 degrees, qint32 minutes) {
     QString tmp = QString("0.%1").arg(minutes);
     float value = tmp.toDouble();
     // return degrees + minutes / 10000000.0;
-    // return degrees + value;
+    return degrees + value;
 
     qDebug() << " ================= protocol value: " <<  degrees + value  << " ------------------ ";
     return sf_extract_to_wgs84(degrees + value);
@@ -97,7 +98,7 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         return false;
     }
 
-    // 检查类型和长度
+    // 检查类型
     // if (m_byDevType != static_cast<quint8>(BASE_STATION)) {
     //     return false;
     // }
@@ -129,16 +130,33 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         // 读取设备在线状态
         cabinet.byOnline = static_cast<CabinetStatus>(m_abyData[offset++]);
 
-        // 读取仓位数
+        // 读取仓位数(和配置文件中实际绑定的铁鞋数量相等)
         cabinet.byStoreNum = static_cast<quint8>(m_abyData[offset++]);
 
-        // 读取仓位状态（byStoreNum 个字节）
-        if (offset + cabinet.byStoreNum > m_abyData.size()) {
-            qDebug() << "Error: Not enough data for status array";
+        // 读取仓位状态（共 byStoreNum 组状态）
+        // 仓位状态数据由仓位状态(quint8)和铁鞋id(quint16)构成
+        quint16 status_data_size = cabinet.byStoreNum * (sizeof(quint8) + sizeof(quint16));
+        if (offset + status_data_size > m_abyData.size()) {
+            qDebug() << "Not enough data for status array. status_data_size:" << status_data_size;
             return false;
         }
-        cabinet.abyStatus = m_abyData.mid(offset, cabinet.byStoreNum);
-        offset += cabinet.byStoreNum;
+        QList<QPair<quint16, StorageStatus>> statusList;
+        int idx = offset;
+        while(idx < offset + status_data_size){
+            StorageStatus status = static_cast<StorageStatus>(m_abyData[idx++]);
+            quint16 shoeId = 0;
+            if (!LittleEndianReader::tryReadUInt16(m_abyData, idx, shoeId)) {
+                qDebug() << "parse shoeId error";
+                return false;
+            }
+            idx += 2;
+            qDebug() << "shoeId:" << shoeId << " -> status:" << static_cast<quint8>(status);
+            statusList.append(qMakePair(shoeId, status));
+        }
+        // cabinet.abyStatus = m_abyData.mid(offset, cabinet.byStoreNum);
+        // offset += cabinet.byStoreNum;
+        offset += status_data_size;
+        cabinet.storeStatus = statusList;
 
         m_cabinetList.append(cabinet);
         cnt++;
@@ -157,7 +175,7 @@ bool DeviceParser::unpack(const QByteArray &fullPacket)
         offset += 2;
 
         // 读取设备在线状态
-        shoe.byOnline = static_cast<DeviceStatus>(m_abyData[offset++]);
+        shoe.byOnline = static_cast<ShoeStatus>(m_abyData[offset++]);
 
         // 读取电量值
         shoe.byBatVal = static_cast<quint8>(m_abyData[offset++]);
@@ -207,14 +225,12 @@ void DeviceParser::Print()
     qDebug() << "===================================";
     qDebug() << "m_byCabinetNum: " << m_byCabinetNum;
     for(const auto& cabinet : m_cabinetList){
-        /*
-         *     quint16 wDevID;        // 设备 ID (U16)
-    quint8 byStoreNum;     // 仓位数
-    QByteArray abyStatus;  // 仓位状态数组
-         */
         qDebug() << "wDevID: " << cabinet.wDevID
-                 << " byStoreNum: " << cabinet.byStoreNum
-                 << " abyStatus: " << cabinet.abyStatus.toHex(' ').toUpper();
+                 << " byStoreNum: " << cabinet.byStoreNum;
+        for (const auto& pair : cabinet.storeStatus) {
+            qDebug() << "shoeId:" << pair.first << " -> status:" << static_cast<quint8>(pair.second);
+
+        }
     }
 
     qDebug() << " m_wShoeNum: " << m_wShoeNum;

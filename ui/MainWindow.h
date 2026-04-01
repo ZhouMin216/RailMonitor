@@ -43,7 +43,7 @@ private:
     DatabaseManager *m_databaseManager;
     QLabel *statusLabel; // 用于显示状态
 
-    DeviceManager* device_mgr_;
+    // DeviceManager* device_mgr_;
 
     QPushButton *mapBtn, *tieShoeBtn, *cabinetBtn, *netBtn, *exitBtn;
 

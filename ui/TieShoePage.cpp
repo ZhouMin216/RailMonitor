@@ -5,8 +5,34 @@
 #include <QLabel>
 
 TieShoePage::TieShoePage(QWidget *parent) : QWidget(parent) {
+    // === 顶部统计栏 ===
+    auto statsLayout = new QHBoxLayout;
+    onlineLabel = new QLabel("在线: 0");
+    offlineLabel = new QLabel("离线: 0");
+
+    onlineLabel->setStyleSheet("color: #00b894; font-size: 16px; font-weight: bold; border: none; background: transparent;");
+    offlineLabel->setStyleSheet("color: #7f8c8d; font-size: 16px; font-weight: bold; border: none; background: transparent;");
+
     auto layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel("铁鞋信息"));
+    QLabel *titleLabel = new QLabel("终端铁鞋状态");
+    titleLabel->setStyleSheet(R"(
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        border: none;               /* ← 显式声明无边框 */
+        background: transparent;    /* ← 确保背景透明 */
+        margin-bottom: 4px;
+    )");
+
+    statsLayout->addWidget(titleLabel);
+    statsLayout->addStretch();
+    statsLayout->addWidget(onlineLabel);
+    statsLayout->addSpacing(20);
+    statsLayout->addWidget(offlineLabel);
+
+    layout->addLayout(statsLayout);
+
+    // layout->addWidget(titleLabel);
 
     // 初始化表头
     table = new QTableWidget(0, static_cast<int>(Column::Count));
@@ -20,6 +46,19 @@ TieShoePage::TieShoePage(QWidget *parent) : QWidget(parent) {
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table->verticalHeader()->setVisible(false);
     layout->addWidget(table);
+}
+
+void TieShoePage::dataUpdated(){
+    QMap<quint16, std::shared_ptr<IconShoe>> shoeMap = DeviceManager::instance()->getShoeMap();
+    if (shoeMap.isEmpty()) return;
+
+    updateStatistics(shoeMap);
+    updateFromDeviceManager(shoeMap);
+
+    // 填充完所有行后，调整每列宽度以适应内容（包括新字体大小）
+    for (int col = 0; col < table->columnCount(); ++col) {
+        table->resizeColumnToContents(col);
+    }
 }
 
 void TieShoePage::updateFromDeviceManager(const QMap<quint16, std::shared_ptr<IconShoe>>& shoeMap)
@@ -50,16 +89,17 @@ void TieShoePage::updateFromDeviceManager(const QMap<quint16, std::shared_ptr<Ic
         // 更新第 row 行的内容
         quint16 shoeId = it.key();
         table->item(row, columnIndex(Column::ShoeId))->setText(QString::number(shoeId));
+        table->item(row, columnIndex(Column::PaintedId))->setText(DeviceManager::instance()->getPaintedID(shoeId));
 
         auto shoeData = shoe->GetShoeData();
         table->item(row, columnIndex(Column::Status))->setText(EnumtoString(shoeData.byOnline));
-        if (shoeData.byOnline == DeviceStatus::Unregister){
+        if (shoeData.byOnline == ShoeStatus::Unregister){
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::red);
-        } else if (shoeData.byOnline == DeviceStatus::Online){
+        } else if (shoeData.byOnline == ShoeStatus::Online){
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::green);
-        } else if (shoeData.byOnline == DeviceStatus::Offline){
+        } else if (shoeData.byOnline == ShoeStatus::Offline){
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::gray);
-        } else if (shoeData.byOnline == DeviceStatus::InCabinet){
+        } else if (shoeData.byOnline == ShoeStatus::InCabinet){
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::yellow);
         } else {
             table->item(row, columnIndex(Column::Status))->setForeground(Qt::black);
@@ -75,8 +115,20 @@ void TieShoePage::updateFromDeviceManager(const QMap<quint16, std::shared_ptr<Ic
         table->item(row, columnIndex(Column::PosQuality))->setText(EnumtoString(shoeData.byPosQuality));
         table->item(row, columnIndex(Column::StarNum))->setText(QString::number(shoeData.byStarNum));
         table->item(row, columnIndex(Column::CabinetId))->setText(QString::number(shoe->GetCabinetID()));
-        table->item(row, columnIndex(Column::StoreIdx))->setText(QString::number(shoe->GetStoreID()));
+        // table->item(row, columnIndex(Column::StoreIdx))->setText(QString::number(shoe->GetStoreID()));
 
         row++;
     }
+}
+
+void TieShoePage::updateStatistics(const QMap<quint16, std::shared_ptr<IconShoe>>& shoeMap) {
+    int online = 0, offline = 0;
+    for (const auto& shoe : shoeMap) {
+        if (!shoe) continue;
+        auto status = shoe->GetShoeData().byOnline;
+        if (status == ShoeStatus::Online || status == ShoeStatus::InCabinet) online++;
+        else if (status == ShoeStatus::Offline) offline++;
+    }
+    onlineLabel->setText(QString("在线: %1").arg(online));
+    offlineLabel->setText(QString("离线: %1").arg(offline));
 }

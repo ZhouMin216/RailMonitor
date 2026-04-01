@@ -39,6 +39,7 @@ public slots:
     // 接收外部数据
     void handleIncomingFencePoint(const QList<QPointF>& data);
     void updateCabinets(const QList<CabinetData>& data);
+    void dataUpdated();
     void updateShoes(const QList<ShoeData>& data);
 
 protected:
@@ -114,7 +115,7 @@ public:
 
     void updateData(const ShoeData& data);
     quint16 getDevID(){ return devID; }
-    DeviceStatus getPrevStatus() { return prevStatus_;}
+    ShoeStatus getPrevStatus() { return prevStatus_;}
     bool isInPolygon() { return inPolygon_;}
     void setInPolygon(bool in) { inPolygon_ = in; }
 
@@ -128,7 +129,7 @@ private:
     double longitude;
     RailMapViewerWidget *parentWidget; // 用于调用父窗口的槽函数
     ShoeData shoeData;
-    DeviceStatus prevStatus_{DeviceStatus::Unregister};
+    ShoeStatus prevStatus_{ShoeStatus::Unregister};
     bool inPolygon_{true};
 
     QMap<QString, QVariant> simulatedParams;

@@ -9,6 +9,7 @@
 #include "protocol/TimeSyncResponse.h"
 #include "protocol/TimeSyncRequest.h"
 #include "protocol/DeviceParser.h"
+#include "DeviceManager.h"
 
 NetworkManager::NetworkManager(QObject *parent)
     : QObject(parent),
@@ -234,10 +235,6 @@ void NetworkManager::onTcpReadyRead() {
         }
 
         if (m_recvBuffer.size() < 9) break;
-
-        // 尝试读取 wPackLen（偏移 6 字节：AA + DevType + DevID(2) + DataType + wPackLen(2)）
-        // quint16 rawWord = *reinterpret_cast<const quint16*>(m_recvBuffer.constData() + 5);
-        // quint16 dataLen = qFromLittleEndian(rawWord);
         quint16 dataLen = 0;
         if (!LittleEndianReader::tryReadUInt16(m_recvBuffer, 5, dataLen)) {
             qDebug() << "parse data len error";
@@ -245,10 +242,9 @@ void NetworkManager::onTcpReadyRead() {
         }
 
         int totalLen = 9 + dataLen; // AA + ... + XOR + 55
-        qDebug() << "dataLen:" << dataLen
-                 << "totalLen:" << totalLen;
         if (m_recvBuffer.size() < totalLen) {
-            qDebug() << "data len error";
+            qDebug() << "data len error, dataLen:" << dataLen
+                     << " totalLen:" << totalLen;
             break; // 包未收完
         }
 
@@ -285,14 +281,19 @@ void NetworkManager::onTcpReadyRead() {
         case ProtocolPacket::DT_STATUS_DATA: {
             DeviceParser device(0x00);
             if (device.unpack(packet)) {
-                auto shoes = device.getShoeData();
-                auto cabinets = device.getCabinetData();
-                if (!cabinets.empty()) {
-                    emit cabinetData(cabinets);
+                // QList<ShoeData> shoes = device.getShoeData();
+                // QList<CabinetData> cabinets = device.getCabinetData();
+                // if (!cabinets.empty()) {
+                //     emit cabinetData(cabinets);
+                // }
+                // if (!shoes.empty()) {
+                //     emit shoeData(shoes);
+                // }
+                if (DeviceManager::instance()->updateShoeStatus(device.getShoeData()) &&
+                    DeviceManager::instance()->updateCabinetStatus(device.getCabinetData())) {
+                    emit statusDataUpdated();
                 }
-                if (!shoes.empty()) {
-                    emit shoeData(shoes);
-                }
+
             } else {
                 qDebug() << "StatusData: m_recvBuffer unpack error ";
             }

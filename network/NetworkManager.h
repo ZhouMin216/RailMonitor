@@ -45,6 +45,8 @@ signals:
     void cabinetData(const QList<CabinetData>& data);
     void shoeData(const QList<ShoeData>& data);
 
+    void statusDataUpdated();
+
 private slots:
     void onUdpReadyRead();
     void onTcpConnected();

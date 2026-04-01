@@ -5,18 +5,18 @@
 #include <QList>
 
 // 铁鞋状态
-enum class DeviceStatus{Offline = 0x00, Online = 0x01, InCabinet = 0x02, Unregister = 0x03, NoEnter = 0x04};
+enum class ShoeStatus{Offline = 0x00, Online = 0x01, InCabinet = 0x02, Unregister = 0x03, NoEnter = 0x04};
 // 鞋柜状态
 enum class CabinetStatus{Offline = 0x00, Online = 0x01, Unregister = 0x02, NoEnter = 0x04};
 // 鞋柜仓位状态
-enum class StorageStatus{Unusual = 0x00, Offline = 0x01, Online = 0x02, Unregister = 0x03};
+enum class StorageStatus{Unusual = 0x00, Offline = 0x01, Online = 0x02, Unregister = 0x03, PosFault = 0x04};
 enum PosQuality{
     NoPos = 0x00, SinglepointPos = 0x01, DiffPos = 0x02,
     PPSpos = 0x03, RTKfixed = 0x04, RTKfloating = 0x05 // RTKfixed 定位质量最好
 };
 
-// DeviceStatus -> string
-QString EnumtoString(DeviceStatus status);
+// ShoeStatus -> string
+QString EnumtoString(ShoeStatus status);
 
 // CabinetStatus -> string
 QString EnumtoString(CabinetStatus status);
@@ -30,20 +30,24 @@ QString EnumtoString(PosQuality quality);
 // 铁鞋数据结构体
 struct ShoeData {
     quint16 wDevID;         // 设备 ID (U16)
-    DeviceStatus byOnline{DeviceStatus::Unregister}; // 在线状态
+    ShoeStatus byOnline{ShoeStatus::Unregister}; // 在线状态
     quint8 byBatVal{0};        // 电量值
     PosQuality byPosQuality{PosQuality::NoPos};    // 位置质量
     quint8 byStarNum{0};       // 卫星数量
     double lng{0.0};              // 经度
     double lat{0.0};              // 纬度
+    QString paintedID;           // 喷涂的编号
 };
 
 // 柜子数据结构体
 struct CabinetData {
     quint16 wDevID;        // 设备 ID (U16)
-    CabinetStatus byOnline{CabinetStatus::Unregister}; // 在线状态
+    CabinetStatus byOnline{CabinetStatus::Offline}; // 在线状态
     quint8 byStoreNum;     // 仓位数
     QByteArray abyStatus;  // 仓位状态数组
+
+    // QPair<quint16, StorageStatus> 是铁鞋id和仓位状态的映射
+    QList<QPair<quint16, StorageStatus>> storeStatus; // 仓位状态
 };
 
 

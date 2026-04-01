@@ -1,54 +1,50 @@
+// ShoeCabinetPage.h
 #pragma once
 #include <QWidget>
-#include <QTableWidget>
+#include <QMap>
+#include <memory>
+#include <QPointF>
+#include <QGridLayout>
 
 #include "DeviceManager.h"
 
+class QScrollArea;
+class QVBoxLayout;
+class QLabel;
+
 class ShoeCabinetPage : public QWidget {
     Q_OBJECT
+
 public:
-    ShoeCabinetPage(QWidget *parent = nullptr);
-
-    // 列定义（必须从 0 开始连续）
-    enum class Column {
-        CabinetId = 0,
-        Status,
-        Position,
-        StoreNum,
-        DetailsButton, // 新增：详情按钮列
-        Count  // 用于校验列数，必须放在最后
-    };
-
-    // 获取列标题（用于初始化表头）
-    static QString columnHeader(Column col) {
-        switch (col) {
-        case Column::CabinetId:  return "柜编号";
-        case Column::Status:  return "状态";
-        case Column::Position:   return "位置";
-        case Column::StoreNum:   return "仓位数";
-        case Column::DetailsButton:   return "仓位详情";
-        default:                 return "";
-        }
-    }
-
-    // 获取列索引（类型安全）
-    static int columnIndex(Column col) {
-        return static_cast<int>(col);
-    }
-
-private:
-    void showShoeDetailsDialog(
-        quint8 storeNum,
-        quint16 cabinetId,
-        const QByteArray& statusArray,
-        const QMap<quint8, quint16>& shoeIds);
+    explicit ShoeCabinetPage(QWidget *parent = nullptr);
 
 public slots:
-    void updateFromDeviceManager(
-        const QMap<quint16, std::shared_ptr<ShoeCabinet>>& cabinetMap);
-
-signals:
+    // 接收设备管理器数据
+    void updateFromDeviceManager(const QMap<quint16, std::shared_ptr<ShoeCabinet>>& cabinetMap);
+    void dataUpdated();
 
 private:
-    QTableWidget *table;
+    void clearCards();
+    QWidget* createCabinetCard(quint16 cabinetId, const std::shared_ptr<ShoeCabinet>& cabinet);
+    void updateStatistics(const QMap<quint16, std::shared_ptr<ShoeCabinet>>& cabinetMap);
+
+
+    // UI
+    QLabel *onlineLabel = nullptr;
+    QLabel *offlineLabel = nullptr;
+    QScrollArea *scrollArea = nullptr;
+    QWidget *container = nullptr;
+    // QVBoxLayout *cardLayout = nullptr;
+    QGridLayout *cardGrid = nullptr;
+
+    // 存储卡片指针（用于清理）
+    // QMap<quint16, QWidget*> cardMap;
+    // QList<QWidget*> cardWidgets; // 临时存储本次创建的卡片
+
+    // 数据缓存（用于统计）
+    QMap<quint16, std::shared_ptr<ShoeCabinet>> currentCabinets;
+
+    // 对话框
+    void showShoeDetailsDialog(quint8 storeNum, quint16 cabinetId, const QByteArray& statusArray,
+                               const QMap<quint8, quint16>& shoeIds);
 };
