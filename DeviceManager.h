@@ -80,7 +80,7 @@ class DeviceManager: public QObject
     Q_OBJECT
 public:
     static DeviceManager* instance() {
-        static DeviceManager inst(qApp); // Meyers Singleton
+        static DeviceManager inst; // Meyers Singleton
         return &inst;
     }
 
