@@ -18,6 +18,7 @@ ShoeCabinet::ShoeCabinet(quint16 id, quint8 store_num, QPointF pos, QList<quint1
 }
 
 void ShoeCabinet::initStoreStatus(QList<quint16> shoe_ids){
+    data_.wDevID = cabinet_id_;
     data_.byStoreNum = store_num_;
     data_.storeStatus.clear();
     for (const auto& shoeId : shoe_ids){

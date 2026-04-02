@@ -372,6 +372,7 @@ void RailMapViewerWidget::drawShoeCabinet(){
         shoeCabinet[it.key()] = marker;
         scene->addItem(marker);
     }
+    dataUpdated();
 }
 
 void RailMapViewerWidget::updateFencePreview() {
@@ -467,7 +468,19 @@ void RailMapViewerWidget::dataUpdated(){
     }
 
     QMap<quint16, std::shared_ptr<ShoeCabinet>> cabinetMap = DeviceManager::instance()->getCabinetMap();
-    if (cabinetMap.isEmpty()) return;
+    if (!cabinetMap.isEmpty()) {
+        QList<CabinetData> data_list;
+        for (auto it = cabinetMap.constBegin(); it != cabinetMap.constEnd(); ++it) {
+            quint16 key = it.key();
+            std::shared_ptr<ShoeCabinet> cabinet = it.value();
+
+            if (!cabinet) continue; // 安全检查
+
+            CabinetData data = cabinet->GetCabinetData();
+            data_list.push_back(data);
+        }
+        updateCabinets(data_list);
+    }
 }
 
 void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
@@ -605,7 +618,7 @@ void RailMapViewerWidget::createLegend() {
     legendGroup = new QGraphicsItemGroup;
 
     // 设置图例背景（半透明深色面板）
-    QRectF bgRect(0, 0, 180, 140);
+    QRectF bgRect(0, 0, 180, 160);
     QPainterPath path;
     path.addRoundedRect(bgRect, 6, 6);
     QGraphicsPathItem  *bg = new QGraphicsPathItem(path);
@@ -614,7 +627,7 @@ void RailMapViewerWidget::createLegend() {
     // bg->setRadius(6); // 圆角
     legendGroup->addToGroup(bg);
 
-    int y = 15; // 起始 Y 坐标
+    int y = 5; // 起始 Y 坐标
     const int lineHeight = 22;
     const int iconX = 10;
     const int textX = 30;
@@ -677,7 +690,7 @@ void RailMapViewerWidget::createLegend() {
         grad.setColorAt(0, QColor("#ffffff"));
         grad.setColorAt(1, fillColor);
 
-        QGraphicsRectItem *rect = new QGraphicsRectItem(iconX - 2, y + 2, 8, 8);
+        QGraphicsRectItem *rect = new QGraphicsRectItem(iconX, y + 2, 8, 8);
         rect->setPen(QPen(borderColor, 1.5));
         rect->setBrush(grad);
         legendGroup->addToGroup(rect);
@@ -698,12 +711,52 @@ void RailMapViewerWidget::createLegend() {
         grad.setColorAt(0, fillColor.lighter(130));
         grad.setColorAt(1, fillColor);
 
-        QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX - 5, y + 1, 10, 10);
+        QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX, y + 1, 10, 10);
         ellipse->setPen(QPen(borderColor, 1.5));
         ellipse->setBrush(grad);
         legendGroup->addToGroup(ellipse);
 
-        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋");
+        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋在线");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y);
+        legendGroup->addToGroup(text);
+        y += lineHeight;
+    }
+
+    {
+        QColor fillColor = QColor("#ffd166");
+        QColor borderColor = QColor("#ffaa33");
+        QRadialGradient grad(iconX, y + 6, 15);
+        grad.setColorAt(0, fillColor.lighter(130));
+        grad.setColorAt(1, fillColor);
+
+        QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX, y + 1, 10, 10);
+        ellipse->setPen(QPen(borderColor, 1.5));
+        ellipse->setBrush(grad);
+        legendGroup->addToGroup(ellipse);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋离线");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y);
+        legendGroup->addToGroup(text);
+        y += lineHeight;
+    }
+
+    {
+        QColor fillColor = QColor("#ff0000");
+        QColor borderColor = QColor("#ff4444");
+        QRadialGradient grad(iconX, y + 6, 15);
+        grad.setColorAt(0, fillColor.lighter(130));
+        grad.setColorAt(1, fillColor);
+
+        QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX, y + 1, 10, 10);
+        ellipse->setPen(QPen(borderColor, 1.5));
+        ellipse->setBrush(grad);
+        legendGroup->addToGroup(ellipse);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋异常");
         text->setFont(font);
         text->setDefaultTextColor(Qt::white);
         text->setPos(textX, y);
@@ -743,13 +796,13 @@ DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, 
     : shoeData(data), parentWidget(parent)
 {
     devID = shoeData.wDevID;
-    deviceName = QString("铁鞋%1").arg(shoeData.wDevID);
+    deviceName = QString("铁鞋 %1").arg(DeviceManager::instance()->getPaintedID(shoeData.wDevID));
     latitude = shoeData.lat;
     longitude = shoeData.lng;
     setupUI();
     QPointF px = parentWidget->geoToPixel(shoeData.lng, shoeData.lat);
     setPos(px.x(), px.y());
-    simulatedParams["设备ID"] = shoeData.wDevID;
+    simulatedParams["铁鞋序列号"] = shoeData.wDevID;
     simulatedParams["在线状态"] = EnumtoString(shoeData.byOnline);
     simulatedParams["电量值"] = shoeData.byBatVal;
     simulatedParams["位置质量"] = EnumtoString(shoeData.byPosQuality);
@@ -764,11 +817,11 @@ void DeviceMarkerItem::setupUI()
         fillColor = QColor("#00ffcc");
         borderColor = QColor("#00ccaa");
     } else if (shoeData.byOnline == ShoeStatus::Offline) {
-        fillColor = QColor("#aa5555");
-        borderColor = QColor("#884444");
+        fillColor = QColor("#ffd166");
+        borderColor = QColor("#ffaa33");
     } else {
-        fillColor = QColor("#555555");
-        borderColor = QColor("#444444");
+        fillColor = QColor("#ff0000");
+        borderColor = QColor("#ff4444");
     }
 
     QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(-5, -5, 10, 10);
@@ -814,11 +867,11 @@ void DeviceMarkerItem::updateData(const ShoeData& data)
                 fillColor = QColor("#00ffcc");
                 borderColor = QColor("#00ccaa");
             } else if (data.byOnline == ShoeStatus::Offline) {
-                fillColor = QColor("#aa5555");
-                borderColor = QColor("#884444");
+                fillColor = QColor("#ffd166");
+                borderColor = QColor("#ffaa33");
             } else {
-                fillColor = QColor("#555555");
-                borderColor = QColor("#444444");
+                fillColor = QColor("#ff0000");
+                borderColor = QColor("#ff4444");
             }
             ellipse->setPen(QPen(borderColor, 1.5));
             QRadialGradient grad(-5, -5, 15);
@@ -850,8 +903,8 @@ ShoeCabinetItem::ShoeCabinetItem(const QString &name, double lat, double lon, QG
     QPointF px = parentWidget->geoToPixel(lon, lat);
     setPos(px.x(), px.y());
     simulatedParams["设备ID"] = cabinetData.wDevID;
-    simulatedParams["仓位数"] = 6;
-    simulatedParams["仓位状态"] = "未知";
+    simulatedParams["仓位数"] = DeviceManager::instance()->getCabinetBindShoes(cabinetData.wDevID).size();
+    // simulatedParams["仓位状态"] = "未知";
     simulatedParams["在线状态"] = "未知";
 }
 
@@ -862,13 +915,13 @@ void ShoeCabinetItem::updateData(const CabinetData& data)
     simulatedParams["设备ID"] = data.wDevID;
     simulatedParams["仓位数"] = data.byStoreNum;
     simulatedParams["在线状态"] = EnumtoString(data.byOnline);
-    if (data.byStoreNum > 0 && data.abyStatus.size() >= data.byStoreNum) {
-        for (int i = 0; i < data.byStoreNum; ++i) {
-            StorageStatus value = static_cast<StorageStatus>(data.abyStatus.at(i));
-            QString key = QString("仓位%1状态").arg(i+1);
-            simulatedParams[key] = EnumtoString(value);
-        }
-    }
+    // if (data.byStoreNum > 0 && data.abyStatus.size() >= data.byStoreNum) {
+    //     for (int i = 0; i < data.byStoreNum; ++i) {
+    //         StorageStatus value = static_cast<StorageStatus>(data.abyStatus.at(i));
+    //         QString key = QString("仓位%1状态").arg(i+1);
+    //         simulatedParams[key] = EnumtoString(value);
+    //     }
+    // }
     // 更新颜色（如果需要根据状态变化）
 }
 
@@ -902,33 +955,87 @@ void ShoeCabinetItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {
     }
 }
 
-// =============== DeviceDetailsDialog ===============
 DeviceDetailsDialog::DeviceDetailsDialog(const QString &name, double lat, double lon,
                                          const QMap<QString, QVariant> &params, QWidget *parent)
     : QDialog(parent) {
     setWindowTitle("设备属性");
     setModal(true);
-    setStyleSheet("background-color: #0f0f1f; color: #00ffcc;");
+    setStyleSheet(R"(
+        QDialog {
+            background-color: #1a1a2e;
+            color: #e0e0ff;
+            border-radius: 10px;         /* 可选：保持圆角 */
+            padding: 16px;               /* 让内容内边距统一 */
+        }
+    )");
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
+    QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(20, 20, 20, 20);
+    mainLayout->setSpacing(0);
 
-    QString info = QString("<b>设备名称:</b> %1<br>").arg(name);
-    info += QString("<b>经度:</b> %1<br>").arg(lon, 0, 'f', 6);
-    info += QString("<b>纬度:</b> %1<br>").arg(lat, 0, 'f', 6);
+    // 添加设备名称（突出显示）
+    QLabel *titleLabel = new QLabel(name);
+    titleLabel->setStyleSheet("font-size: 18pt; font-weight: bold; color: #00ffcc; margin-bottom: 8px; margin: 0; padding: 0;");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(titleLabel);
 
+    // 基础信息：经纬度
+    addKeyValueRow(mainLayout, "经度", QString::number(lon, 'f', 6));
+    addKeyValueRow(mainLayout, "纬度", QString::number(lat, 'f', 6));
+
+    // 自定义参数
     for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
-        info += QString("<b>%1:</b> %2<br>").arg(it.key()).arg(it.value().toString());
+        addKeyValueRow(mainLayout, it.key(), it.value().toString());
     }
 
-    QLabel *infoLabel = new QLabel(info);
-    infoLabel->setTextFormat(Qt::RichText);
-    infoLabel->setStyleSheet("background-color: #1a1a2e; padding: 10px; border-radius: 5px;");
-    layout->addWidget(infoLabel);
-
+    // === 按钮 ===
     QPushButton *okButton = new QPushButton("确定");
-    okButton->setStyleSheet("background-color: #4a6aff; color: white; padding: 5px;");
+    okButton->setStyleSheet(R"(
+        QPushButton {
+            background-color: #4a6aff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 11pt;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: #5a7aff;
+        }
+        QPushButton:pressed {
+            background-color: #3a5aff;
+        }
+    )");
     connect(okButton, &QPushButton::clicked, this, &DeviceDetailsDialog::accept);
-    layout->addWidget(okButton);
+    QHBoxLayout *buttonLayout = new QHBoxLayout;
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(okButton);
+    buttonLayout->addStretch();
+    mainLayout->addLayout(buttonLayout);
 
-    setLayout(layout);
+    setLayout(mainLayout);
+    resize(400, 300); // 设置合理默认大小
+}
+
+// 辅助函数：添加一行“键: 值”
+void DeviceDetailsDialog::addKeyValueRow(QVBoxLayout *layout, const QString &key, const QString &value) {
+    QHBoxLayout *row = new QHBoxLayout;
+    row->setSpacing(8); // 适度间距（比 0 更美观），可调为 4 或 6
+    row->setContentsMargins(0, 0, 0, 0);
+
+    // 左对齐：键 + 冒号 + 值，全部左对齐
+    QLabel *label = new QLabel(QString("<b>%1:</b> %2").arg(key).arg(value));
+    label->setStyleSheet(R"(
+        color: #e0e0ff;
+        font-size: 10pt;
+        margin: 0;
+        padding: 0;
+    )");
+    label->setIndent(0);
+    label->setWordWrap(false);
+    label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    row->addWidget(label);
+    layout->addLayout(row);
 }

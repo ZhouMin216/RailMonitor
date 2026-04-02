@@ -10,6 +10,7 @@
 #include <QJsonDocument>
 #include <QMessageBox>
 #include <QGraphicsItemGroup>
+#include <QVBoxLayout>
 
 #include "protocol/DeviceParser.h"
 
@@ -169,6 +170,9 @@ class DeviceDetailsDialog : public QDialog {
 public:
     explicit DeviceDetailsDialog(const QString &name, double lat, double lon,
                                  const QMap<QString, QVariant> &params, QWidget *parent = nullptr);
+
+private:
+    void addKeyValueRow(QVBoxLayout *layout, const QString &key, const QString &value);
 
 private slots:
     // void onOkClicked();
