@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
-    app.setFont(QFont("Microsoft YaHei", 10));
+    app.setFont(QFont("Microsoft YaHei", 10)); // Segoe UI
 
     MainWindow w;
     w.showFullScreen();

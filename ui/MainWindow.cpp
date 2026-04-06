@@ -87,13 +87,16 @@ void MainWindow::setupUI() {
     mapPage = new RailMapViewerWidget(this);
     tieShoePage = new TieShoePage(this);
     cabinetPage = new ShoeCabinetPage(this);
-    netPage = new NetworkConfigPage(this);
+    // netPage = new NetworkConfigPage(this);
+
+    whiteListPage_ = new WhiteListPage(this);
 
     contentStack = new QStackedWidget;
     contentStack->addWidget(mapPage);
     contentStack->addWidget(tieShoePage);
     contentStack->addWidget(cabinetPage);
-    contentStack->addWidget(netPage);
+    // contentStack->addWidget(netPage);
+    contentStack->addWidget(whiteListPage_);
 
     // ========== 添加顶部标题栏 ==========
     QWidget *headerWidget = new QWidget;
@@ -140,13 +143,15 @@ void MainWindow::setupUI() {
     mapBtn = new QPushButton("地图监控");
     tieShoeBtn = new QPushButton("铁鞋管理");
     cabinetBtn = new QPushButton("鞋柜管理");
-    netBtn = new QPushButton("网络设置");
+    // netBtn = new QPushButton("网络设置");
+    whiteListBtn_ = new QPushButton("系统配置");
 
     // 设置按钮为可选中（checkable），实现互斥
     mapBtn->setCheckable(true);
     tieShoeBtn->setCheckable(true);
     cabinetBtn->setCheckable(true);
-    netBtn->setCheckable(true);
+    // netBtn->setCheckable(true);
+    whiteListBtn_->setCheckable(true);
 
     // 默认选中第一个
     mapBtn->setChecked(true);
@@ -155,13 +160,14 @@ void MainWindow::setupUI() {
     connect(mapBtn, &QPushButton::clicked, this, [this]() { switchPage(0); });
     connect(tieShoeBtn, &QPushButton::clicked, this, [this]() { switchPage(1); });
     connect(cabinetBtn, &QPushButton::clicked, this, [this]() { switchPage(2); });
-    connect(netBtn, &QPushButton::clicked, this, [this]() { switchPage(3); });
+    // connect(netBtn, &QPushButton::clicked, this, [this]() { switchPage(3); });
+    connect(whiteListBtn_, &QPushButton::clicked, this, [this]() { switchPage(3); });
 
-    connect(netPage, &NetworkConfigPage::connectRequested,
-            this, &MainWindow::onConnectRequested);
+    // connect(netPage, &NetworkConfigPage::connectRequested,
+    //         this, &MainWindow::onConnectRequested);
 
-    connect(netPage, &NetworkConfigPage::disconnectRequested,
-            this, &MainWindow::onDisconnectRequested);
+    // connect(netPage, &NetworkConfigPage::disconnectRequested,
+    //         this, &MainWindow::onDisconnectRequested);
 
     // 退出按钮（不可选中，独立位置）
     exitBtn = new QPushButton("退出系统");
@@ -175,7 +181,8 @@ void MainWindow::setupUI() {
     navLayout->addWidget(mapBtn);
     navLayout->addWidget(tieShoeBtn);
     navLayout->addWidget(cabinetBtn);
-    navLayout->addWidget(netBtn);
+    // navLayout->addWidget(netBtn);
+    navLayout->addWidget(whiteListBtn_);
     navLayout->addStretch(); // 推开下方的退出按钮
 
     // 左侧整体容器：导航 + 退出
@@ -227,7 +234,8 @@ void MainWindow::switchPage(int index) {
     mapBtn->setChecked(index == 0);
     tieShoeBtn->setChecked(index == 1);
     cabinetBtn->setChecked(index == 2);
-    netBtn->setChecked(index == 3);
+    // netBtn->setChecked(index == 3);
+    whiteListBtn_->setChecked(index == 3);
 }
 
 void MainWindow::handleTcpMessage(const QVariantMap &msg) {

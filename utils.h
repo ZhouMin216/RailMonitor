@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <QSvgRenderer>
+#include <QPainter>
 
 static QPixmap coloredSvg(const QString &path, const QColor &color, int w, int h)
 {

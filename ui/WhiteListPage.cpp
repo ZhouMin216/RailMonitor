@@ -3,6 +3,8 @@
 #include "WhiteListPage.h"
 #include "utils.h"
 #include <QGroupBox>
+#include <QFormLayout>
+#include <QFileDialog>
 
 WhiteListPage::WhiteListPage(QWidget *parent)
     : QWidget(parent)
@@ -20,7 +22,7 @@ void WhiteListPage::setupUI()
     mainLayout->setSpacing(20);
 
     // ===== 标题 =====
-    auto title = new QLabel("员工准入白名单配置");
+    auto title = new QLabel("白名单配置");
     title->setStyleSheet("font-size: 20px; font-weight: bold; color: white;");
     auto subtitle = new QLabel("管理有权开启智能鞋柜授权人员名单");
     subtitle->setStyleSheet("font-size: 12px; color: #94a3b8;");
@@ -31,14 +33,15 @@ void WhiteListPage::setupUI()
     auto contentLayout = new QHBoxLayout();
     contentLayout->setSpacing(20);
 
-    // --- 左侧：表格容器 ---
+
+    // --- 左侧：表格容器（不变）---
     auto tableContainer = new QWidget();
     tableContainer->setObjectName("tableContainer");
     tableContainer->setStyleSheet("#tableContainer { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.1); border-radius: 12px; }");
     auto tableLayout = new QVBoxLayout(tableContainer);
     tableLayout->setContentsMargins(0, 0, 0, 0);
 
-    // 表头
+    // 表头（保持不变）
     auto headerWidget = new QWidget();
     headerWidget->setStyleSheet("background: #1e293b;  border-top-left-radius: 12px; border-top-right-radius: 12px;");
     auto headerLayout = new QHBoxLayout(headerWidget);
@@ -46,8 +49,7 @@ void WhiteListPage::setupUI()
 
     QLabel *logo = new QLabel;
     logo->setPixmap(coloredSvg(":/icon/whitelist_icon.svg", QColor("#38BDF8"), 36, 36));
-    logo->setAttribute(Qt::WA_TranslucentBackground); // ← 透明背景
-    // railIcon->setAutoFillBackground(false);
+    logo->setAttribute(Qt::WA_TranslucentBackground);
     headerLayout->addWidget(logo);
 
     auto hTitle = new QLabel("生效名单管理");
@@ -65,7 +67,7 @@ void WhiteListPage::setupUI()
     headerLayout->addWidget(searchEdit);
     tableLayout->addWidget(headerWidget);
 
-    // 表格
+    // 表格（保持不变）
     m_table = new QTableWidget();
     m_table->setColumnCount(Columns::index(Column::Count));
     QStringList headers;
@@ -74,38 +76,29 @@ void WhiteListPage::setupUI()
     }
     m_table->setHorizontalHeaderLabels(headers);
     m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    m_table->horizontalHeader()->setStyleSheet(
-        "QHeaderView::section {"
-        "   background: #1e293b; color: #94a3b8; padding: 10px 12px;"
-        "   border: none; border-bottom: 1px solid #334155;"
-        "}"
-        );
     m_table->verticalHeader()->setVisible(false);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    // m_table->setStyleSheet(
-    //     "QTableWidget { background: transparent; gridline-color: #1e293b; }"
-    //     "QTableWidget::item { padding: 10px 12px; }"
-    //     "QTableWidget::item:hover { background-color: rgba(56, 189, 248, 0.1); }"
-    //     );
-    m_table->setStyleSheet(
-        "QTableWidget { background: transparent; gridline-color: #1e293b; }"
-        // 移除 QTableWidget::item { padding: ... }
-        "QTableWidget::item:hover { background-color: rgba(56, 189, 248, 0.1); }"
-        );
     m_table->verticalHeader()->setDefaultSectionSize(40);
     tableLayout->addWidget(m_table);
 
-    // 页脚
+    // 页脚（保持不变）
     auto footer = new QLabel("共 0 名授权人员处于生效状态");
     footer->setObjectName("footerLabel");
     footer->setStyleSheet("#footerLabel { color: #64748b; font-size: 12px; margin-top: 8px; text-align: right; }");
     footer->setAlignment(Qt::AlignRight);
     tableLayout->addWidget(footer);
 
-    contentLayout->addWidget(tableContainer, 1);
+    contentLayout->addWidget(tableContainer, 1); // 左侧占主要空间
 
-    // --- 右侧：表单容器（与左侧等高）---
+    // --- 右侧：垂直面板（原 formContainer + globalBox）---
+    auto rightPanel = new QWidget();
+    rightPanel->setObjectName("rightPanel");
+    rightPanel->setStyleSheet("#rightPanel { background: transparent; }"); // 透明，不额外加背景
+    auto rightLayout = new QVBoxLayout(rightPanel);
+    rightLayout->setSpacing(20);
+
+    // >>> 原 formContainer（白名单添加表单）<<<
     auto formContainer = new QWidget();
     formContainer->setObjectName("formContainer");
     formContainer->setStyleSheet("#formContainer { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.1); border-radius: 12px; }");
@@ -118,7 +111,7 @@ void WhiteListPage::setupUI()
     auto titleLayout = new QHBoxLayout();
     QLabel *add_user = new QLabel;
     add_user->setPixmap(coloredSvg(":/icon/add_user.svg", QColor("#38BDF8"), 36, 36));
-    add_user->setAttribute(Qt::WA_TranslucentBackground); // ← 透明背景
+    add_user->setAttribute(Qt::WA_TranslucentBackground);
     titleLayout->addWidget(add_user);
 
     auto formTitle = new QLabel("添加白名单人员");
@@ -127,16 +120,13 @@ void WhiteListPage::setupUI()
     titleLayout->addStretch();
     formLayout->addLayout(titleLayout);
 
+    const int LABEL_WIDTH = 80;
     // 姓名
-    const int LABEL_WIDTH = 80; // 根据您的UI调整这个值
-
-    // --- 姓名 ---
     auto nameLayout = new QHBoxLayout();
     auto nameLabel = new QLabel("员工姓名");
-    nameLabel->setFixedWidth(LABEL_WIDTH); // ← 设置固定宽度
-    nameLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // ← 文本右对齐
+    nameLabel->setFixedWidth(LABEL_WIDTH);
+    nameLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     nameLayout->addWidget(nameLabel);
-
     m_lineName = new QLineEdit();
     m_lineName->setPlaceholderText("输入姓名");
     m_lineName->setStyleSheet(
@@ -147,16 +137,14 @@ void WhiteListPage::setupUI()
     nameLayout->addStretch();
     formLayout->addLayout(nameLayout);
 
-    // --- 授权ID ---
+    // 授权ID
     auto uidLayout = new QHBoxLayout();
     auto uidLabel = new QLabel("授权ID");
-    uidLabel->setFixedWidth(LABEL_WIDTH); // ← 同样的固定宽度
-    uidLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // ← 同样的对齐方式
+    uidLabel->setFixedWidth(LABEL_WIDTH);
+    uidLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     uidLayout->addWidget(uidLabel);
-
     m_lineUid = new QLineEdit();
     m_lineUid->setPlaceholderText("输入数字ID");
-    // m_lineUid->setValidator(new QIntValidator(0, 4294967295, this));
     m_lineUid->setInputMethodHints(Qt::ImhDigitsOnly);
     m_lineUid->setStyleSheet(
         "background: #1e293b; border: 1px solid #334155; border-radius: 6px; "
@@ -166,13 +154,12 @@ void WhiteListPage::setupUI()
     uidLayout->addStretch();
     formLayout->addLayout(uidLayout);
 
-    // --- 所属部门 ---
+    // 所属部门
     auto deptLayout = new QHBoxLayout();
     auto deptLabel = new QLabel("所属部门");
-    deptLabel->setFixedWidth(LABEL_WIDTH); // ← 同样的固定宽度
-    deptLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // ← 同样的对齐方式
+    deptLabel->setFixedWidth(LABEL_WIDTH);
+    deptLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     deptLayout->addWidget(deptLabel);
-
     m_lineDept = new QLineEdit();
     m_lineDept->setPlaceholderText("输入部门");
     m_lineDept->setStyleSheet(
@@ -185,7 +172,6 @@ void WhiteListPage::setupUI()
 
     // 按钮
     m_btnAdd = new QPushButton("提交并生效");
-    // m_btnAdd->setIcon(QIcon(":/icons/delete.svg"));
     m_btnAdd->setStyleSheet(
         "QPushButton {"
         "   background-color: #0ea5e9; color: white; border: none; border-radius: 6px;"
@@ -213,16 +199,15 @@ void WhiteListPage::setupUI()
 
     formLayout->addWidget(m_btnAdd);
     formLayout->addWidget(m_btnReset);
-    formLayout->addStretch(); // 推动按钮靠上，使表单与表格等高
+    // formLayout->addStretch();
 
-    contentLayout->addWidget(formContainer);
-    mainLayout->addLayout(contentLayout);
+    rightLayout->addWidget(formContainer);
 
-    // ===== 全局配置 =====
-    auto globalBox = new QGroupBox("系统全局同步配置");
+    // >>> 数据盘点配置（原 globalBox）<<<
+    auto globalBox = new QGroupBox("数据盘点配置");
     globalBox->setStyleSheet(
         "QGroupBox {"
-        "   border: 1px solid #334155; border-radius: 12px; padding: 16px;"
+        "   border: 1px solid #334155; border-radius: 12; padding: 16px;"
         "   background: rgba(15, 23, 42, 0.7);"
         "}"
         "QGroupBox::title {"
@@ -230,52 +215,63 @@ void WhiteListPage::setupUI()
         "   color: #60a5fa; font-weight: bold;"
         "}"
         );
+
     auto globalLayout = new QVBoxLayout(globalBox);
+    auto formGrid = new QFormLayout();
+    formGrid->setHorizontalSpacing(16);
+    formGrid->setVerticalSpacing(12);
+    formGrid->setLabelAlignment(Qt::AlignRight);
 
-    auto grid = new QGridLayout();
-    grid->setVerticalSpacing(16);
-    grid->setHorizontalSpacing(24);
+    // 导出目录
+    m_exportPathLabel = new QLabel("未选择目录");
+    m_exportPathLabel->setStyleSheet("color: #cbd5e1; background: #1e293b; padding: 6px 10px; border-radius: 4px;");
+    m_exportPathLabel->setWordWrap(true);
+    m_exportPathLabel->setMinimumHeight(28);
 
-    m_cbOfflineLock = new QCheckBox("离线自动锁定");
-    m_cbOfflineLock->setChecked(true);
-    m_cbOfflineLock->setStyleSheet("color: white;");
-    grid->addWidget(m_cbOfflineLock, 0, 0);
-    auto lbl1 = new QLabel("当鞋柜网络中断时，是否启动紧急物理锁定");
-    lbl1->setStyleSheet("color: #64748b; font-size: 12px;");
-    grid->addWidget(lbl1, 1, 0);
-
-    m_cbAlertPush = new QCheckBox("告警外部触控推送");
-    m_cbAlertPush->setChecked(true);
-    m_cbAlertPush->setStyleSheet("color: white;");
-    grid->addWidget(m_cbAlertPush, 0, 1);
-    auto lbl2 = new QLabel("异常情况即时推送至责任人手机钉钉/企业微信");
-    lbl2->setStyleSheet("color: #64748b; font-size: 12px;");
-    grid->addWidget(lbl2, 1, 1);
-
-    auto syncLabel = new QLabel("白名单全网同步频率");
-    syncLabel->setStyleSheet("color: white; font-weight: medium;");
-    grid->addWidget(syncLabel, 2, 0);
-    auto freqLabel = new QLabel("每 10 分钟");
-    freqLabel->setStyleSheet(
-        "color: #38bdf8; background: rgba(56, 189, 248, 0.1); "
-        "border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 4px; "
-        "padding: 2px 8px; font-size: 12px;"
+    auto browseBtn = new QPushButton("浏览...");
+    browseBtn->setStyleSheet(
+        "QPushButton {"
+        "   background-color: #38bdf8; color: #0f172a; border: none; border-radius: 4px;"
+        "   padding: 4px 12px; font-size: 12px; font-weight: bold;"
+        "}"
+        "QPushButton:hover { background-color: #0ea5e9; }"
         );
-    grid->addWidget(freqLabel, 2, 1);
+    connect(browseBtn, &QPushButton::clicked, this, [this]() {
+        QString dir = QFileDialog::getExistingDirectory(
+            this,
+            "选择导出目录",
+            m_exportPathLabel->text() == "未选择目录" ? QDir::homePath() : m_exportPathLabel->text(),
+            QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+            );
+        if (!dir.isEmpty()) {
+            m_exportPathLabel->setText(dir);
+        }
+    });
 
-    m_cbAnonymize = new QCheckBox("数据存储脱敏");
-    m_cbAnonymize->setChecked(false);
-    m_cbAnonymize->setStyleSheet("color: white;");
-    grid->addWidget(m_cbAnonymize, 3, 0);
-    auto lbl3 = new QLabel("针对日志中的人员姓名进行部分掩码处理");
-    lbl3->setStyleSheet("color: #64748b; font-size: 12px;");
-    grid->addWidget(lbl3, 4, 0);
+    auto pathLayout = new QHBoxLayout();
+    pathLayout->addWidget(m_exportPathLabel, 1);
+    pathLayout->addWidget(browseBtn);
+    formGrid->addRow("导出目录", pathLayout);
 
-    globalLayout->addLayout(grid);
+    // 导出时间
+    m_timeEdit = new QTimeEdit();
+    m_timeEdit->setDisplayFormat("HH:mm");
+    m_timeEdit->setStyleSheet(
+        "QTimeEdit {"
+        "   background: #1e293b; border: 1px solid #334155; border-radius: 6px;"
+        "   padding: 6px 10px; color: white;"
+        "}"
+        "QTimeEdit::up-button, QTimeEdit::down-button { width: 16px; }"
+        );
+    m_timeEdit->setTime(QTime::currentTime());
+    formGrid->addRow("导出时间", m_timeEdit);
 
+    globalLayout->addLayout(formGrid);
+
+    // 保存按钮
     auto btnLayout = new QHBoxLayout();
     btnLayout->addStretch();
-    m_btnSaveGlobal = new QPushButton("保存全局配置");
+    m_btnSaveGlobal = new QPushButton("保存配置");
     m_btnSaveGlobal->setStyleSheet(
         "QPushButton {"
         "   background-color: #10b981; color: white; border: none; border-radius: 6px;"
@@ -287,7 +283,14 @@ void WhiteListPage::setupUI()
     btnLayout->addWidget(m_btnSaveGlobal);
     globalLayout->addLayout(btnLayout);
 
-    mainLayout->addWidget(globalBox);
+    rightLayout->addWidget(globalBox); // 添加到右侧垂直面板
+    rightLayout->addStretch();
+
+    // 将右侧面板加入主内容区
+    contentLayout->addWidget(rightPanel, 0); // 右侧不伸展，按内容大小
+
+    // 添加主内容区到主布局
+    mainLayout->addLayout(contentLayout);
 }
 
 void WhiteListPage::populateTable(const WhitelistMap &entries)
@@ -305,7 +308,7 @@ void WhiteListPage::populateTable(const WhitelistMap &entries)
 
         // 姓名
         auto itemName = new QTableWidgetItem(e.name);
-        itemName->setFont(QFont("", -1, QFont::Bold));
+        // itemName->setFont(QFont("", -1, QFont::Bold));
         itemName->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         m_table->setItem(row, Columns::index(Column::Name), itemName);
 
@@ -315,39 +318,71 @@ void WhiteListPage::populateTable(const WhitelistMap &entries)
         m_table->setItem(row, Columns::index(Column::Department), itemDept);
 
         // 操作按钮
-        auto actionsWidget = new QWidget();
-        actionsWidget->setStyleSheet("background: transparent;"); // ⭐ 透明背景
-        actionsWidget->setMinimumSize(64, 32);
-        actionsWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        // 创建一个容器（必须，因为要放两个按钮）
+        auto container = new QWidget();
+        container->setMinimumSize(52, 28); // ⭐ 关键：宽度=24+24+4(spacing)+4(margins)
+        container->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); // 高度固定
 
-        auto hlayout = new QHBoxLayout(actionsWidget);
-        hlayout->setContentsMargins(4, 0, 4, 0);
-        hlayout->setSpacing(8);
-        hlayout->setAlignment(Qt::AlignCenter); // 居中
+        auto hlayout = new QHBoxLayout(container);
+        hlayout->setContentsMargins(2, 0, 2, 0);
+        hlayout->setSpacing(4);
+        hlayout->setAlignment(Qt::AlignCenter);
 
-        auto btnEdit = new QPushButton("E");
+        // 关键：不要 setFlat(true)，也不要透明样式！
+        // auto btnEdit = new QPushButton("Edit");
+        // btnEdit->setFixedSize(24, 24);
+        // // btnEdit->setMaximumSize(24, 24);
+        // // 不设置 setStyleSheet！让其使用系统默认样式（带背景）
+
+        // auto btnDel = new QPushButton("Delete");
+        // btnDel->setFixedSize(24, 24);
+        // // btnDel->setMaximumSize(24, 24);
+
+        // 替换文字按钮为图标按钮（更符合 UI 美观和空间限制）
+        auto btnEdit = new QPushButton();
         btnEdit->setFixedSize(24, 24);
+        btnEdit->setIcon(QIcon(coloredSvg(":/icon/edit.svg", QColor("#38BDF8"), 16, 16))); // 假设有 edit 图标
+        btnEdit->setIconSize(QSize(16, 16));
         btnEdit->setStyleSheet(
-            "QPushButton { background: transparent; border: none; color: #38bdf8; }"
-            "QPushButton:hover { color: #60a5fa; }"
+            "QPushButton {"
+            "   background-color: rgba(56, 189, 248, 0.2);"
+            "   border: 1px solid rgba(56, 189, 248, 0.5);"
+            "   border-radius: 4px;"
+            "}"
+            "QPushButton:hover {"
+            "   background-color: rgba(56, 189, 248, 0.4);"
+            "}"
             );
-        connect(btnEdit, &QPushButton::clicked, [this, row]() { onEditClicked(row); });
 
-        auto btnDel = new QPushButton("D");
+        auto btnDel = new QPushButton();
         btnDel->setFixedSize(24, 24);
+        btnDel->setIcon(QIcon(coloredSvg(":/icon/delete.svg", QColor("#ef4444"), 16, 16)));
+        btnDel->setIconSize(QSize(16, 16));
         btnDel->setStyleSheet(
-            "QPushButton { background: transparent; border: none; color: #f87171; }"
-            "QPushButton:hover { color: #fca5a5; }"
+            "QPushButton {"
+            "   background-color: rgba(239, 68, 68, 0.2);"
+            "   border: 1px solid rgba(239, 68, 68, 0.5);"
+            "   border-radius: 4px;"
+            "}"
+            "QPushButton:hover {"
+            "   background-color: rgba(239, 68, 68, 0.4);"
+            "}"
             );
+
+        connect(btnEdit, &QPushButton::clicked, [this, row]() { onEditClicked(row); });
         connect(btnDel, &QPushButton::clicked, [this, row]() { onDeleteClicked(row); });
 
         hlayout->addWidget(btnEdit);
         hlayout->addWidget(btnDel);
-        actionsWidget->adjustSize();
-        m_table->setCellWidget(row, Columns::index(Column::Actions), actionsWidget);
 
+        m_table->setCellWidget(row, Columns::index(Column::Actions), container);
+
+        qDebug() << "Row" << row << "Container size:" << container->size()
+                 << "Layout size hint:" << hlayout->sizeHint();
         ++row;
     }
+    m_table->viewport()->update();      // 立即重绘
+    m_table->repaint();                 // 备用
 
     // 更新页脚计数
     auto footer = findChild<QLabel*>("footerLabel");

@@ -6,5 +6,9 @@
         <file alias="logo.svg">resources/assets/logo.svg</file>
         <file alias="password.svg">resources/assets/password.svg</file>
         <file alias="user.svg">resources/assets/user.svg</file>
+        <file alias="add_user.svg">resources/assets/add_user.svg</file>
+        <file alias="delete.svg">resources/assets/delete.svg</file>
+        <file alias="edit.svg">resources/assets/edit.svg</file>
+        <file alias="whitelist_icon.svg">resources/assets/whitelist_icon.svg</file>
     </qresource>
 </RCC>

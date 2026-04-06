@@ -15,6 +15,7 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QIcon>
+#include <QTimeEdit>
 
 struct WhitelistEntry {
     quint32 uid;
@@ -87,6 +88,9 @@ private:
     QString m_editingUidStr; // 临时存储正在编辑的 UID 字符串（用于按钮文本切换）
 
     WhitelistMap m_whitelist;
+
+    QLabel* m_exportPathLabel = nullptr;
+    QTimeEdit* m_timeEdit = nullptr;
 };
 
 #endif // WHITELISTPAGE_H
