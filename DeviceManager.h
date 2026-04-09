@@ -89,12 +89,6 @@ public:
 
     // explicit DeviceManager(QObject *parent = nullptr);
     // ~DeviceManager();
-    void updateCabinet() {
-        emit shoeCabinetUpdated(cabinet_Map_);
-    }
-    void updateIconShoe() {
-        emit iconShoeUpdated(shoe_map_);
-    }
 
     void loadConfig();
 
@@ -131,9 +125,9 @@ private:
 
 
 signals:
-    void shoeCabinetUpdated(const QMap<quint16, std::shared_ptr<ShoeCabinet>>& data);
-    void iconShoeUpdated(const QMap<quint16, std::shared_ptr<IconShoe>>& data);
-    void shoeData(const QList<ShoeData>& data);
+    // void shoeCabinetUpdated(const QMap<quint16, std::shared_ptr<ShoeCabinet>>& data);
+    // void iconShoeUpdated(const QMap<quint16, std::shared_ptr<IconShoe>>& data);
+    // void shoeData(const QList<ShoeData>& data);
 
 private:
     explicit DeviceManager(QObject *parent = nullptr);

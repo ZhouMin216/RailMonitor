@@ -6,54 +6,55 @@
 #include <QPointF>
 
 #include "protocol/DeviceParser.h"
+#include "protocol/WhitelistSync.h"
 
 class DatabaseManager: public QObject {
     Q_OBJECT
 public:
-    // static void initDatabase();
-    // static QList<QVariantMap> getTieShoes();
-    // static QList<QVariantMap> getShoeCabinets();
-    // static QList<QPointF> loadGeoFence();
-    // static void saveGeoFence(const QList<QPointF>& points);
     explicit DatabaseManager(QObject *parent = nullptr);
     ~DatabaseManager();
 
-    // 初始化数据库连接（需在 moveToThread 之前或在线程启动时调用）
     void initDatabase();
+    void loadDataInventoryConfig();
 
 public slots:
-     // 接收基站传来的数据
-    void handleBaseStationShoeData(const QList<ShoeData>& data);
-    void handleBaseStationCabinetData(const QList<CabinetData>& data);
-
-    // 接收ui发送的请求
-    void handleGetShoeData();
-    void handleGetCabinetData();
+    // 电子围栏相关
     void handleGetGeoFence();
     void handleSaveGeoFence(const QList<QPointF>& point);
     void handleClearGeoFence();
 
-    // 可选：定时清理或批量处理槽
+    // 白名单相关
+    void handleAddToWhitelist(const WhitelistEntry& entry);
+    void handleUpdateWhitelist(const WhitelistEntry& entry);
+    void handleRemoveFromWhitelist(quint32 id);
+    void handleGetWhitelist(quint32 id);
+
+    // 数据盘点配置
+    void handleDataInventoryConfig(const QString &path, const QTime &time);
 
 signals:
-    // 通知 UI 有新数据加入
-    void shoeDataUpdate(const QList<ShoeData>& data);
-    void cabinetDataUpdated(const QList<CabinetData>& data);
-
-    void allShoeData(const QList<QVariantMap>& data);
-    void allShoeCabinetData(const QList<QVariantMap>& data);
+    // 电子围栏
     void geoFenceData(const QList<QPointF>& data);
+
+    // 白名单
+    void whitelistData(const QMap<quint32, WhitelistEntry>& entries);
+    void whitelistOperationResult(bool success, const QString& message = QString());
+
+    // 数据盘点配置
+    void dataInventoryConfigLoaded(const QString &path, const QTime &time);
 
     // 通知错误
     void errorOccurred(const QString &msg);
 
 private:
-    QList<QVariantMap> getTieShoes();
-    QList<QVariantMap> getShoeCabinets();
     QList<QPointF> loadGeoFence();
     void saveGeoFence(const QList<QPointF>& points);
 
+    QMap<quint32, WhitelistEntry> loadWhitelist(quint32 id);
+    bool addToWhitelist(const WhitelistEntry& entry);
+    bool updateWhitelist(const WhitelistEntry& entry);
+    bool removeFromWhitelist(quint32 id);
+
 private:
     QSqlDatabase m_db;
-    QString m_connectionName;
 };

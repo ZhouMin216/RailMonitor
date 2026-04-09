@@ -10,7 +10,11 @@ WhiteListPage::WhiteListPage(QWidget *parent)
     : QWidget(parent)
 {
     setupUI();
-    refreshTable(); // 初始化空表
+    // refreshTable(); // 初始化空表
+}
+
+void WhiteListPage::getAllWhitelist() {
+    emit getWhitelist(0);
 }
 
 void WhiteListPage::setupUI()
@@ -57,14 +61,14 @@ void WhiteListPage::setupUI()
     headerLayout->addWidget(hTitle);
     headerLayout->addStretch();
 
-    auto searchEdit = new QLineEdit();
-    searchEdit->setPlaceholderText("快速查找姓名/授权ID");
-    searchEdit->setFixedWidth(200);
-    searchEdit->setStyleSheet(
-        "background: #1e293b; border: 1px solid #334155; border-radius: 6px; "
-        "padding: 6px 10px; color: white;"
-        );
-    headerLayout->addWidget(searchEdit);
+    // auto searchEdit = new QLineEdit();
+    // searchEdit->setPlaceholderText("快速查找姓名/授权ID");
+    // searchEdit->setFixedWidth(200);
+    // searchEdit->setStyleSheet(
+    //     "background: #1e293b; border: 1px solid #334155; border-radius: 6px; "
+    //     "padding: 6px 10px; color: white;"
+    //     );
+    // headerLayout->addWidget(searchEdit);
     tableLayout->addWidget(headerWidget);
 
     // 表格（保持不变）
@@ -147,8 +151,19 @@ void WhiteListPage::setupUI()
     m_lineUid->setPlaceholderText("输入数字ID");
     m_lineUid->setInputMethodHints(Qt::ImhDigitsOnly);
     m_lineUid->setStyleSheet(
-        "background: #1e293b; border: 1px solid #334155; border-radius: 6px; "
-        "padding: 8px 10px; color: white;"
+        "QLineEdit {"
+        "background: #1e293b; "
+        "border: 1px solid #334155; "
+        "border-radius: 6px; "
+        "padding: 8px 10px; "
+        "color: white;"
+        "}"
+        "QLineEdit:disabled {"
+        "background: #334155; "          // 更浅/更暗的灰色，表示禁用
+        "border: 1px solid #475569; "    // 边框也变淡
+        "color: #94a3b8; "               // 文字变灰
+        "opacity: 0.8;"                  // 可选：降低不透明度
+        "}"
         );
     uidLayout->addWidget(m_lineUid);
     uidLayout->addStretch();
@@ -190,6 +205,7 @@ void WhiteListPage::setupUI()
         "QPushButton:hover { background-color: rgba(56, 189, 248, 0.1); color: #cbd5e1; }"
         );
     connect(m_btnReset, &QPushButton::clicked, [this]() {
+        m_lineUid->setEnabled(true);
         m_lineName->clear();
         m_lineUid->clear();
         m_lineDept->clear();
@@ -226,6 +242,8 @@ void WhiteListPage::setupUI()
     m_exportPathLabel = new QLabel("未选择目录");
     m_exportPathLabel->setStyleSheet("color: #cbd5e1; background: #1e293b; padding: 6px 10px; border-radius: 4px;");
     m_exportPathLabel->setWordWrap(true);
+    m_exportPathLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
+    m_exportPathLabel->setMaximumWidth(180);
     m_exportPathLabel->setMinimumHeight(28);
 
     auto browseBtn = new QPushButton("浏览...");
@@ -237,14 +255,35 @@ void WhiteListPage::setupUI()
         "QPushButton:hover { background-color: #0ea5e9; }"
         );
     connect(browseBtn, &QPushButton::clicked, this, [this]() {
-        QString dir = QFileDialog::getExistingDirectory(
+        // 默认文件名
+        QString defaultFileName = "data_inventory.txt";
+
+        // 如果已有路径且不是默认提示，则尝试提取目录作为初始目录
+        QString initialDir;
+        QString currentText = m_exportPathLabel->text();
+        if (currentText != "未选择目录") {
+            QFileInfo fi(currentText);
+            if (fi.exists()) {
+                initialDir = fi.absolutePath();
+            } else if (QDir(currentText).exists()) {
+                initialDir = currentText;
+            } else {
+                initialDir = QFileInfo(currentText).absolutePath(); // 即使路径不存在也取目录部分
+            }
+        } else {
+            initialDir = QDir::homePath();
+        }
+
+        // 弹出“另存为”对话框
+        QString selectedFile = QFileDialog::getSaveFileName(
             this,
-            "选择导出目录",
-            m_exportPathLabel->text() == "未选择目录" ? QDir::homePath() : m_exportPathLabel->text(),
-            QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+            "选择导出文件路径",
+            initialDir + "/" + defaultFileName,   // 初始路径+文件名
+            "文本文件 (*.txt);;所有文件 (*)"     // 文件过滤器（可选）
             );
-        if (!dir.isEmpty()) {
-            m_exportPathLabel->setText(dir);
+
+        if (!selectedFile.isEmpty()) {
+            m_exportPathLabel->setText(selectedFile);
         }
     });
 
@@ -279,7 +318,13 @@ void WhiteListPage::setupUI()
         "}"
         "QPushButton:hover { background-color: #34d399; }"
         );
-    connect(m_btnSaveGlobal, &QPushButton::clicked, this, &WhiteListPage::onSaveGlobalConfig);
+    // connect(m_btnSaveGlobal, &QPushButton::clicked, this, &WhiteListPage::onSaveGlobalConfig);
+    connect(m_btnSaveGlobal, &QPushButton::clicked, this, [this](){
+        if (m_exportPathLabel->text() != "未选择目录")
+            emit dataInventoryConfig(m_exportPathLabel->text(), m_timeEdit->time());
+        else
+            QMessageBox::warning(this, "告警", "请选择导出目录！");
+    });
     btnLayout->addWidget(m_btnSaveGlobal);
     globalLayout->addLayout(btnLayout);
 
@@ -327,16 +372,6 @@ void WhiteListPage::populateTable(const WhitelistMap &entries)
         hlayout->setContentsMargins(2, 0, 2, 0);
         hlayout->setSpacing(4);
         hlayout->setAlignment(Qt::AlignCenter);
-
-        // 关键：不要 setFlat(true)，也不要透明样式！
-        // auto btnEdit = new QPushButton("Edit");
-        // btnEdit->setFixedSize(24, 24);
-        // // btnEdit->setMaximumSize(24, 24);
-        // // 不设置 setStyleSheet！让其使用系统默认样式（带背景）
-
-        // auto btnDel = new QPushButton("Delete");
-        // btnDel->setFixedSize(24, 24);
-        // // btnDel->setMaximumSize(24, 24);
 
         // 替换文字按钮为图标按钮（更符合 UI 美观和空间限制）
         auto btnEdit = new QPushButton();
@@ -391,8 +426,9 @@ void WhiteListPage::populateTable(const WhitelistMap &entries)
     }
 }
 
-void WhiteListPage::refreshTable()
+void WhiteListPage::refreshTable(const WhitelistMap &entries)
 {
+    m_whitelist = entries;
     populateTable(m_whitelist);
 }
 
@@ -423,8 +459,8 @@ void WhiteListPage::onAddClicked()
         }
         WhitelistEntry entry{uid, name, dept};
         m_whitelist[uid] = entry;
-        emit entryAdded(uid, name);
-        QMessageBox::information(this, "成功", "人员已添加！");
+        emit entryAdded(m_whitelist[uid]);
+        // QMessageBox::information(this, "成功", "人员已添加！");
     } else {
         // 编辑
         bool wasFound = false;
@@ -432,7 +468,7 @@ void WhiteListPage::onAddClicked()
             if (QString::number(it.key()) == m_editingUidStr) {
                 it.value().name = name;
                 it.value().department = dept;
-                emit entryUpdated(it.key(), name);
+                emit entryUpdated(it.value());
                 wasFound = true;
                 break;
             }
@@ -441,12 +477,12 @@ void WhiteListPage::onAddClicked()
             QMessageBox::critical(this, "错误", "编辑失败：原始记录不存在");
             return;
         }
-        QMessageBox::information(this, "成功", "信息已更新！");
+        // QMessageBox::information(this, "成功", "信息已更新！");
         m_editingUidStr.clear();
         m_btnAdd->setText("提交并生效");
     }
 
-    refreshTable();
+    // refreshTable(m_whitelist);
     m_lineName->clear();
     m_lineUid->clear();
     m_lineDept->clear();
@@ -461,6 +497,7 @@ void WhiteListPage::onEditClicked(int row)
     QString dept = m_table->item(row, Columns::index(Column::Department))->text();
 
     m_lineUid->setText(uidStr);
+    m_lineUid->setEnabled(false);
     m_lineName->setText(name);
     m_lineDept->setText(dept);
 
@@ -480,12 +517,24 @@ void WhiteListPage::onDeleteClicked(int row)
 
     m_whitelist.remove(uid);
     emit entryRemoved(uid);
-    refreshTable();
-    QMessageBox::information(this, "成功", "已删除。");
+    // refreshTable(m_whitelist);
+    // QMessageBox::information(this, "成功", "已删除。");
+}
+
+void WhiteListPage::handleOperateResult(bool ok, const QString& msg){
+    qDebug() << ok << " " << msg;
+    QMessageBox::warning(this, ok ? "成功" : "失败", msg);
+
+    emit getWhitelist(0);
 }
 
 void WhiteListPage::onSaveGlobalConfig()
 {
     // 预留接口：此处可调用数据库保存
     QMessageBox::information(this, "提示", "全局配置保存成功（内存模拟）");
+}
+
+void WhiteListPage::handleDataInventoryConfig(const QString &path, const QTime &time){
+    m_exportPathLabel->setText(path);
+    m_timeEdit->setTime(time);
 }

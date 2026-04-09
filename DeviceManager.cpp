@@ -181,7 +181,6 @@ bool DeviceManager::updateCabinetStatus(QList<CabinetData> data){
         //     qDebug() << "shoeId:" << pair.first << " -> status:" << static_cast<quint8>(pair.second);
         // }
     }
-    // updateCabinet();
 
     return true;
 }
@@ -195,20 +194,8 @@ bool DeviceManager::updateShoeStatus(QList<ShoeData> data)
 
             shoe.paintedID = getPaintedID(shoe.wDevID);
             shoe_ptr->SetData(shoe);
-
-            // quint16 cabinetId = shoe_ptr->GetCabinetID();
-            // if (cabinet_Map_.contains(cabinetId)){
-            //     quint8 storeIdx = shoe_ptr->GetStoreID();
-            //     auto cabinet_ptr = cabinet_Map_[cabinetId];
-            //     if (cabinet_ptr->ShoeIsInStore(storeIdx)){
-            //         shoe_ptr->ChangeShoeStatus(ShoeStatus::InCabinet);
-            //         shoe.byOnline = ShoeStatus::InCabinet;
-            //     }
-            // }
         }
     }
-    // emit shoeData(data); // 发送给地图
-    // updateIconShoe();
 
     return true;
 }

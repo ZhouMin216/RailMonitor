@@ -10,19 +10,10 @@
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     networkManager = new NetworkManager(this);
     m_databaseManager = new DatabaseManager(this);
-
-    // device_mgr_ = new DeviceManager(this);
-    // device_mgr_->loadConfig();
-
     DeviceManager::instance()->loadConfig();
 
     setupUI();
     setupStatusBar();
-
-    // connect(device_mgr_, &DeviceManager::shoeCabinetUpdated, cabinetPage, &ShoeCabinetPage::updateFromDeviceManager);
-    // connect(device_mgr_, &DeviceManager::iconShoeUpdated, tieShoePage, &TieShoePage::updateFromDeviceManager);
-    // connect(networkManager, &NetworkManager::cabinetData, device_mgr_, &DeviceManager::updateCabinetStatus);
-    // connect(networkManager, &NetworkManager::shoeData, device_mgr_, &DeviceManager::updateShoeStatus);
 
     connect(networkManager, &NetworkManager::statusDataUpdated, cabinetPage, &ShoeCabinetPage::dataUpdated);
     connect(networkManager, &NetworkManager::statusDataUpdated, tieShoePage, &TieShoePage::dataUpdated);
@@ -40,21 +31,39 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         // 可选：提示用户已发现服务器
     });
 
-    // connect(networkManager, &NetworkManager::cabinetData, mapPage, &RailMapViewerWidget::updateCabinets);
-    // connect(device_mgr_, &DeviceManager::shoeData, mapPage, &RailMapViewerWidget::updateShoes);
+
+    connect(whiteListPage_, &WhiteListPage::entryAdded, m_databaseManager, &DatabaseManager::handleAddToWhitelist);
+    connect(whiteListPage_, &WhiteListPage::entryUpdated, m_databaseManager, &DatabaseManager::handleUpdateWhitelist);
+    connect(whiteListPage_, &WhiteListPage::entryRemoved, m_databaseManager, &DatabaseManager::handleRemoveFromWhitelist);
+    connect(whiteListPage_, &WhiteListPage::getWhitelist, m_databaseManager, &DatabaseManager::handleGetWhitelist);
+    connect(m_databaseManager, &DatabaseManager::whitelistOperationResult, whiteListPage_, &WhiteListPage::handleOperateResult);
+    connect(m_databaseManager, &DatabaseManager::whitelistData, whiteListPage_, &WhiteListPage::refreshTable);
+    connect(m_databaseManager, &DatabaseManager::whitelistData, this, [this](const QMap<quint32, WhitelistEntry>& entries){
+        std::vector<quint32> whitelist;
+        for (auto it = entries.cbegin(); it != entries.cend(); ++it) {
+            quint32 uid = it.key();
+            // const WhitelistEntry &e = it.value();
+
+            whitelist.push_back(uid);
+        }
+        WhitelistSync response(0x00, whitelist);
+        networkManager->sendRequest(response);
+    });
+    connect(m_databaseManager, &DatabaseManager::dataInventoryConfigLoaded, whiteListPage_, &WhiteListPage::handleDataInventoryConfig);
+    connect(whiteListPage_, &WhiteListPage::dataInventoryConfig, m_databaseManager, &DatabaseManager::handleDataInventoryConfig);
+
 
     m_databaseManager->initDatabase();
+    m_databaseManager->loadDataInventoryConfig();
 
     // 启动自动发现
     networkManager->startDiscovery();
 
     mapPage->loadGeoFence();
 
-    // device_mgr_->updateCabinet();
-    // device_mgr_->updateIconShoe();
-
     cabinetPage->dataUpdated();
     tieShoePage->dataUpdated();
+    whiteListPage_->getAllWhitelist();
 
     // loginDialog = new LoginDialog(this);
     // QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {
@@ -291,21 +300,21 @@ void MainWindow::updateNetworkStatus(NetworkManager::ConnectionState state) {
         statusLabel->setStyleSheet("color: green; font-weight: bold; padding: 4px 8px;");
         {
             // 连接成功后主动发送时间同步给基站
-            // qint64 secs = QDateTime::currentSecsSinceEpoch();
-            // qDebug() << "Unix timestamp (seconds):" << secs;
-            // QDateTime localTime = QDateTime::fromSecsSinceEpoch(secs);
-            // qDebug() << "Local time:" << localTime.toString("yyyy-MM-dd HH:mm:ss");
-            // TimeSyncResponse response(0x00, secs);
-            // networkManager->sendRequest(response);
-
-            std::vector<quint32> whitelist;
-            whitelist.push_back(0x12345678);
-            whitelist.push_back(0x34567890);
-            whitelist.push_back(0x56789ABC);
-            whitelist.push_back(0x789ABCDE);
-            whitelist.push_back(0x87654321);
-            WhitelistSync response(0x00, whitelist);
+            qint64 secs = QDateTime::currentSecsSinceEpoch();
+            qDebug() << "Unix timestamp (seconds):" << secs;
+            QDateTime localTime = QDateTime::fromSecsSinceEpoch(secs);
+            qDebug() << "Local time:" << localTime.toString("yyyy-MM-dd HH:mm:ss");
+            TimeSyncResponse response(0x00, secs);
             networkManager->sendRequest(response);
+
+            // std::vector<quint32> whitelist;
+            // whitelist.push_back(0x12345678);
+            // whitelist.push_back(0x34567890);
+            // whitelist.push_back(0x56789ABC);
+            // whitelist.push_back(0x789ABCDE);
+            // whitelist.push_back(0x87654321);
+            // WhitelistSync response(0x00, whitelist);
+            // networkManager->sendRequest(response);
         }
     } else if (state == NetworkManager::Discovering || state == NetworkManager::Connecting) {
         statusLabel->setStyleSheet("color: orange; padding: 4px 8px;");

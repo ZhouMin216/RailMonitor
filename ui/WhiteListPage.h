@@ -17,11 +17,7 @@
 #include <QIcon>
 #include <QTimeEdit>
 
-struct WhitelistEntry {
-    quint32 uid;
-    QString name;
-    QString department;
-};
+#include "protocol/WhitelistSync.h"
 
 using WhitelistMap = QMap<quint32, WhitelistEntry>;
 
@@ -56,17 +52,25 @@ class WhiteListPage : public QWidget
 public:
     explicit WhiteListPage(QWidget *parent = nullptr);
 
+    void getAllWhitelist();
+
 signals:
-    void entryAdded(quint32 uid, const QString &name);
-    void entryUpdated(quint32 uid, const QString &name);
+    void entryAdded(const WhitelistEntry& entry);
+    void entryUpdated(const WhitelistEntry& entry);
     void entryRemoved(quint32 uid);
+    void getWhitelist(quint32 uid); // uid等于0时获取全部白名单
+
+    void dataInventoryConfig(const QString &path, const QTime &time);
 
 public slots:
-    void refreshTable();
+    void refreshTable(const WhitelistMap &entries);
     void onAddClicked();
     void onEditClicked(int row);
     void onDeleteClicked(int row);
+    void handleOperateResult(bool ok, const QString& msg);
     void onSaveGlobalConfig();
+
+    void handleDataInventoryConfig(const QString &path, const QTime &time);
 
 private:
     void setupUI();
