@@ -32,6 +32,7 @@ class RailMapViewerWidget : public QWidget {
     Q_OBJECT
 public:
     explicit RailMapViewerWidget(QWidget *parent = nullptr);
+    ~RailMapViewerWidget() override;
     void addDeviceMarker(const QString &name, double lat, double lon);
     QPointF geoToPixel(double lng, double lat);
     void loadGeoFence();
@@ -42,6 +43,7 @@ public slots:
     void updateCabinets(const QList<CabinetData>& data);
     void dataUpdated();
     void updateShoes(const QList<ShoeData>& data);
+    void updateLegendPosition();
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
