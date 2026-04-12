@@ -6,7 +6,8 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Sql Svg)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Sql Svg Charts)
+# find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 qt6_add_executable(RailMonitor
     main.cpp
@@ -31,6 +32,7 @@ qt6_add_executable(RailMonitor
     ui/LoginDialog.cpp
     utils.h
     ui/WhiteListPage.h ui/WhiteListPage.cpp
+    ui/DataInventoryPage.h ui/DataInventoryPage.cpp
 
 )
 
@@ -42,4 +44,6 @@ target_link_libraries(RailMonitor PRIVATE
     Qt6::Network
     Qt6::Sql
     Qt6::Svg
+    Qt6::Charts
 )
+# target_link_libraries(RailMonitor PRIVATE Qt6::Widgets)

@@ -14,6 +14,7 @@
 #include "DeviceManager.h"
 #include "LoginDialog.h"
 #include "WhiteListPage.h"
+#include "ui/DataInventoryPage.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -40,6 +41,7 @@ private:
     ShoeCabinetPage *cabinetPage;
     NetworkConfigPage *netPage;
     WhiteListPage *whiteListPage_;
+    DataInventoryPage *dataInventoryPage_;
 
     NetworkManager *networkManager;
     DatabaseManager *m_databaseManager;
@@ -47,7 +49,7 @@ private:
 
     // DeviceManager* device_mgr_;
 
-    QPushButton *mapBtn, *tieShoeBtn, *cabinetBtn, *netBtn, *whiteListBtn_, *exitBtn;
+    QPushButton *mapBtn, *tieShoeBtn, *cabinetBtn, *netBtn, *whiteListBtn_, *dataInventoryBtn_, *exitBtn;
 
     LoginDialog *loginDialog;
     QLabel *timeLabel; // 时间显示标签

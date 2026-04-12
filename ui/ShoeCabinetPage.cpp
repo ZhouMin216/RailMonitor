@@ -53,7 +53,7 @@ ShoeCabinetPage::ShoeCabinetPage(QWidget *parent)
     scrollArea = new QScrollArea;
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setStyleSheet("background: #0f0f1b; border: none;");
+    scrollArea->setStyleSheet("background: transparent; border: none;");
 
     container = new QWidget;
     cardGrid = new QGridLayout(container);

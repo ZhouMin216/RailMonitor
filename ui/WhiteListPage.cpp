@@ -256,7 +256,7 @@ void WhiteListPage::setupUI()
         );
     connect(browseBtn, &QPushButton::clicked, this, [this]() {
         // 默认文件名
-        QString defaultFileName = "data_inventory.txt";
+        QString defaultFileName = "data_inventory.csv";
 
         // 如果已有路径且不是默认提示，则尝试提取目录作为初始目录
         QString initialDir;
@@ -279,10 +279,15 @@ void WhiteListPage::setupUI()
             this,
             "选择导出文件路径",
             initialDir + "/" + defaultFileName,   // 初始路径+文件名
-            "文本文件 (*.txt);;所有文件 (*)"     // 文件过滤器（可选）
+            "CSV 文件 (*.csv)"     // 文件过滤器（可选）
             );
 
         if (!selectedFile.isEmpty()) {
+            QFileInfo fileInfo(selectedFile);
+            QString baseName = fileInfo.completeBaseName(); // 去掉所有扩展名
+            QString dir = fileInfo.absolutePath();
+            selectedFile = dir + "/" + baseName + ".csv";
+
             m_exportPathLabel->setText(selectedFile);
         }
     });

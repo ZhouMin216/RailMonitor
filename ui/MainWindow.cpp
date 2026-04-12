@@ -18,6 +18,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(networkManager, &NetworkManager::statusDataUpdated, cabinetPage, &ShoeCabinetPage::dataUpdated);
     connect(networkManager, &NetworkManager::statusDataUpdated, tieShoePage, &TieShoePage::dataUpdated);
     connect(networkManager, &NetworkManager::statusDataUpdated, mapPage, &RailMapViewerWidget::dataUpdated);
+    connect(networkManager, &NetworkManager::statusDataUpdated, dataInventoryPage_, &DataInventoryPage::dataUpdated);
 
 
     connect(mapPage, &RailMapViewerWidget::getGeoFence, m_databaseManager, &DatabaseManager::handleGetGeoFence);
@@ -52,6 +53,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_databaseManager, &DatabaseManager::dataInventoryConfigLoaded, whiteListPage_, &WhiteListPage::handleDataInventoryConfig);
     connect(whiteListPage_, &WhiteListPage::dataInventoryConfig, m_databaseManager, &DatabaseManager::handleDataInventoryConfig);
 
+    connect(m_databaseManager, &DatabaseManager::dataInventoryConfigLoaded, dataInventoryPage_, &DataInventoryPage::handleDataInventoryConfig);
+    connect(whiteListPage_, &WhiteListPage::dataInventoryConfig, dataInventoryPage_, &DataInventoryPage::handleDataInventoryConfig);
+
 
     m_databaseManager->initDatabase();
     m_databaseManager->loadDataInventoryConfig();
@@ -63,8 +67,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     cabinetPage->dataUpdated();
     tieShoePage->dataUpdated();
+    dataInventoryPage_->dataUpdated();
     whiteListPage_->getAllWhitelist();
 
+    // dataInventoryPage_->updateData(
+    //     13, 12, 1,
+    //     50, 23, 20, 7,
+    //     22
+    //     );
+
+    // 登录窗口
     // loginDialog = new LoginDialog(this);
     // QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {
     //     loginDialog->hide();           // 隐藏登录框
@@ -97,7 +109,7 @@ void MainWindow::setupUI() {
     tieShoePage = new TieShoePage(this);
     cabinetPage = new ShoeCabinetPage(this);
     // netPage = new NetworkConfigPage(this);
-
+    dataInventoryPage_ = new DataInventoryPage(this);
     whiteListPage_ = new WhiteListPage(this);
 
     contentStack = new QStackedWidget;
@@ -105,8 +117,8 @@ void MainWindow::setupUI() {
     contentStack->addWidget(tieShoePage);
     contentStack->addWidget(cabinetPage);
     // contentStack->addWidget(netPage);
+    contentStack->addWidget(dataInventoryPage_);
     contentStack->addWidget(whiteListPage_);
-
     // ========== 添加顶部标题栏 ==========
     QWidget *headerWidget = new QWidget;
 
@@ -153,6 +165,7 @@ void MainWindow::setupUI() {
     tieShoeBtn = new QPushButton("铁鞋管理");
     cabinetBtn = new QPushButton("鞋柜管理");
     // netBtn = new QPushButton("网络设置");
+    dataInventoryBtn_ = new QPushButton("数据盘点");
     whiteListBtn_ = new QPushButton("系统配置");
 
     // 设置按钮为可选中（checkable），实现互斥
@@ -160,6 +173,7 @@ void MainWindow::setupUI() {
     tieShoeBtn->setCheckable(true);
     cabinetBtn->setCheckable(true);
     // netBtn->setCheckable(true);
+    dataInventoryBtn_->setCheckable(true);
     whiteListBtn_->setCheckable(true);
 
     // 默认选中第一个
@@ -169,8 +183,8 @@ void MainWindow::setupUI() {
     connect(mapBtn, &QPushButton::clicked, this, [this]() { switchPage(0); });
     connect(tieShoeBtn, &QPushButton::clicked, this, [this]() { switchPage(1); });
     connect(cabinetBtn, &QPushButton::clicked, this, [this]() { switchPage(2); });
-    // connect(netBtn, &QPushButton::clicked, this, [this]() { switchPage(3); });
-    connect(whiteListBtn_, &QPushButton::clicked, this, [this]() { switchPage(3); });
+    connect(dataInventoryBtn_, &QPushButton::clicked, this, [this]() { switchPage(3); });
+    connect(whiteListBtn_, &QPushButton::clicked, this, [this]() { switchPage(4); });
 
     // connect(netPage, &NetworkConfigPage::connectRequested,
     //         this, &MainWindow::onConnectRequested);
@@ -190,7 +204,7 @@ void MainWindow::setupUI() {
     navLayout->addWidget(mapBtn);
     navLayout->addWidget(tieShoeBtn);
     navLayout->addWidget(cabinetBtn);
-    // navLayout->addWidget(netBtn);
+    navLayout->addWidget(dataInventoryBtn_);
     navLayout->addWidget(whiteListBtn_);
     navLayout->addStretch(); // 推开下方的退出按钮
 
@@ -243,8 +257,8 @@ void MainWindow::switchPage(int index) {
     mapBtn->setChecked(index == 0);
     tieShoeBtn->setChecked(index == 1);
     cabinetBtn->setChecked(index == 2);
-    // netBtn->setChecked(index == 3);
-    whiteListBtn_->setChecked(index == 3);
+    dataInventoryBtn_->setChecked(index == 3);
+    whiteListBtn_->setChecked(index == 4);
 }
 
 void MainWindow::handleTcpMessage(const QVariantMap &msg) {
