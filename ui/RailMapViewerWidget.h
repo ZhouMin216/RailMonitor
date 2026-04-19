@@ -69,6 +69,8 @@ private:
     void drawFence();
     void drawShoeCabinet();
     void updateFencePreview();
+    void updateAspectRatio();
+    void rotateScene(float angle);
 
     QPointF pixelToGeo(qreal x, qreal y);
     bool pointInPolygon(const QPointF& point, const QList<QPointF>& polygon);

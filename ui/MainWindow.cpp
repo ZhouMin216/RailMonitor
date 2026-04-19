@@ -70,12 +70,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     dataInventoryPage_->dataUpdated();
     whiteListPage_->getAllWhitelist();
 
-    // dataInventoryPage_->updateData(
-    //     13, 12, 1,
-    //     50, 23, 20, 7,
-    //     22
-    //     );
-
     // 登录窗口
     // loginDialog = new LoginDialog(this);
     // QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {

@@ -28,7 +28,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     view = new QGraphicsView(scene);
     view->setRenderHint(QPainter::Antialiasing, true);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    view->setStyleSheet("background: transparent; border: none;"); // 深空黑背景
+    view->setStyleSheet("background: transparent; border: 2px solid #d3d3d3;");
     // 隐藏滚动条
     // view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     // view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -50,9 +50,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
         bool ok;
         double angle = rotateInput->text().toDouble(&ok);
         if (ok) {
-            view->setTransform(QTransform().rotate(angle));
-            view->fitInView(scene->sceneRect(), Qt::KeepAspectRatioByExpanding);
-            view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum());
+            rotateScene(angle);
             rotateInput->clear();
         }
     });
@@ -101,7 +99,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
 
     QLabel *titleLabel = new QLabel("石家庄车辆段铁鞋智能管理");
     titleLabel->setAlignment(Qt::AlignCenter); // 居中对齐
-    titleLabel->setStyleSheet("font-size: 18pt; font-weight: bold; color: #ffffff; padding: 10px; background: transparent;");
+    titleLabel->setStyleSheet("font-size: 24pt; font-weight: bold; color: #ffffff; padding: 10px; background: transparent;");
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(titleLabel);  // 添加标题
@@ -295,17 +293,20 @@ void RailMapViewerWidget::drawAll() {
 
     createLegend();
 
-    // ✅ 关键：设置场景矩形为所有图元的包围盒
-    QRectF bounds = scene->itemsBoundingRect();
-    if (!bounds.isEmpty()) {
-        scene->setSceneRect(bounds);
+    rotateScene(-17.0);
+}
 
-        // 👇 不再 fitInView，而是直接放大！
-        view->resetTransform();           // 先清除之前的变换（包括旋转）
-        view->rotate(-22.5);              // 应用旋转
-        view->scale(1.5, 1.5);            // 放大 x 倍
-        view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum() * 0.85);
-    }
+void RailMapViewerWidget::rotateScene(float angle){
+    // ✅ 使用固定的场景矩形，不包含动态元素
+    qreal sceneWidth = h_pixel + 2 * marign;
+    qreal sceneHeight = v_pixel + 2 * marign;
+    scene->setSceneRect(0, 0, sceneWidth, sceneHeight);
+
+    // 应用变换
+    view->resetTransform();
+    view->rotate(angle);
+    view->scale(1.5, 1.5);
+    view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum() * 0.85);
 }
 
 void RailMapViewerWidget::drawTracks() {
@@ -339,11 +340,19 @@ void RailMapViewerWidget::drawTracks() {
 }
 
 void RailMapViewerWidget::drawBuildings() {
-    QBrush brush(QColor(20, 20, 40, 180));
-    QPen pen(QColor("#4a6aff"), 2.0);
-    pen.setJoinStyle(Qt::MiterJoin);
+    QColor topColor(20, 20, 40, 220);      // 顶部深灰蓝
+    QColor sideColor(230, 230, 240, 255);  // 侧面浅灰（参考您截图的灰色调）
+    QColor frontColor(180, 180, 190, 255);    // 正面深灰（可选）
+    QColor edgeColor(74, 106, 255, 220);   // 边框亮蓝
 
-    QFont font("Consolas", 10, QFont::Bold);
+    QPen pen(edgeColor, 1.5);
+    pen.setJoinStyle(Qt::MiterJoin);
+    pen.setCapStyle(Qt::RoundCap);
+
+    qreal depth = 6.0;
+    qreal height = 6.0;
+
+    QFont font("Consolas", 16, QFont::Bold);
     font.setLetterSpacing(QFont::PercentageSpacing, 110);
 
     for (const Building &building : buildings_) {
@@ -354,22 +363,75 @@ void RailMapViewerWidget::drawBuildings() {
         }
         if (poly.size() < 3) continue;
 
-        QGraphicsPolygonItem* polygon = scene->addPolygon(poly, pen, brush);
+        // ===== 情况1：名字为空 → 完整3D效果 =====
+        if (building.name.isEmpty()) {
+            // 1. 顶部面（原多边形）
+            QPen topPen(frontColor, 1.5);
+            topPen.setJoinStyle(Qt::MiterJoin);
+            topPen.setCapStyle(Qt::RoundCap);
+            QGraphicsPolygonItem* top = scene->addPolygon(poly, topPen, QBrush(frontColor));
+            top->setZValue(3);  // 最上层
 
-        QGraphicsDropShadowEffect* innerGlow = new QGraphicsDropShadowEffect();
-        innerGlow->setColor(QColor(74, 106, 255, 40));
-        innerGlow->setBlurRadius(8);
-        innerGlow->setOffset(0, 0);
-        polygon->setGraphicsEffect(innerGlow);
+            // 2. 计算侧面顶点（向右下偏移）
+            QPolygonF sidePoly = poly;
+            for (int i = 0; i < sidePoly.size(); ++i) {
+                sidePoly[i] += QPointF(depth, height);
+            }
 
+            // 3. 【关键修正】绘制每个侧面立面（四边形）→ 填充色！
+            QPen sideEdgePen(sideColor, 1.5);
+            sideEdgePen.setCosmetic(true);
+            sideEdgePen.setCapStyle(Qt::RoundCap);
+            sideEdgePen.setJoinStyle(Qt::RoundJoin);
+
+            for (int i = 0; i < poly.size(); ++i) {
+                int next = (i + 1) % poly.size();
+
+                // 创建侧面立面四边形：[poly[i], poly[next], sidePoly[next], sidePoly[i]]
+                QPolygonF sideFace;
+                sideFace << poly[i]
+                         << poly[next]
+                         << sidePoly[next]
+                         << sidePoly[i];
+
+                // 填充侧面立面（这才是您要的“连线形成的多边形填充”）
+                QGraphicsPolygonItem* sideFaceItem = scene->addPolygon(
+                    sideFace,
+                    sideEdgePen,          // 边框线（可选，也可用 Qt::NoPen）
+                    QBrush(sideColor)     // 填充色！关键在这里
+                    );
+                sideFaceItem->setZValue(2);  // 在顶部之下，背景之上
+            }
+
+            // 4. （可选）添加顶部到侧面的连接线（增强轮廓感，但非必需）
+            // 如果不需要额外线条，可以注释掉下面这段
+            for (int i = 0; i < poly.size(); ++i) {
+                QGraphicsLineItem* lineItem = scene->addLine(poly[i].x(), poly[i].y(),
+                               sidePoly[i].x(), sidePoly[i].y(),
+                               QPen(frontColor, 1.0));
+                lineItem->setZValue(4);
+            }
+
+        }
+        // ===== 情况2：名字不为空 → 2D平面效果 =====
+        else {
+            // 简单2D矩形（无3D）
+            QGraphicsPolygonItem* flat = scene->addPolygon(poly, pen, QBrush(topColor));
+            flat->setZValue(2);
+        }
+
+        // ===== 文字标签 =====
         qreal cx = 0, cy = 0;
         for (const QPointF &p : poly) { cx += p.x(); cy += p.y(); }
         cx /= poly.size(); cy /= poly.size();
 
+        if (building.name == "厂修库") continue;
+
         QGraphicsTextItem *text = scene->addText(building.name, font);
         text->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        text->setDefaultTextColor(QColor("#ffffff"));
+        text->setDefaultTextColor(QColor(255, 255, 255, 120));
         text->setPos(cx - text->boundingRect().width()/2, cy - text->boundingRect().height()/2);
+        text->setZValue(4);
     }
 }
 
@@ -382,7 +444,7 @@ void RailMapViewerWidget::drawFence() {
     }
     poly << geoToPixel(savedFencePoints.first().x(), savedFencePoints.first().y());
 
-    fenceItem = scene->addPolygon(poly, QPen(QColor("#ff0000"), 2.5, Qt::DashLine));
+    fenceItem = scene->addPolygon(poly, QPen(QColor("#ff0000"), 1.5, Qt::DashLine));
     fenceItem->setZValue(100);
 }
 
@@ -592,14 +654,38 @@ void RailMapViewerWidget::mousePressEvent(QMouseEvent *event) {
 }
 
 void RailMapViewerWidget::resizeEvent(QResizeEvent *event) {
-    QSize vpSize = view->size();
-    h_pixel = vpSize.width() - 2 * marign;
-    v_pixel = vpSize.height() - 2 * marign;
-    if (h_pixel < 100) h_pixel = 100;
-    if (v_pixel < 100) v_pixel = 100;
+    updateAspectRatio();
 
     drawAll();
     QWidget::resizeEvent(event);
+}
+
+void RailMapViewerWidget::updateAspectRatio(){
+    QSize vpSize = view->size();
+    qreal availableWidth = vpSize.width() - 2 * marign;
+    qreal availableHeight = vpSize.height() - 2 * marign;
+
+    // 关键：根据地理坐标的真实比例来设置 h_pixel 和 v_pixel
+    if (latSpan > 1e-8 && lngSpan > 1e-8) {
+        qreal geoRatio = lngSpan / latSpan;  // ≈ 3.07
+        qreal viewportRatio = availableWidth / availableHeight;
+
+        if (geoRatio > viewportRatio) {
+            // 地理区域比视口更宽，以宽度为基准
+            h_pixel = availableWidth;
+            v_pixel = h_pixel / geoRatio;  // 高度按比例缩小
+        } else {
+            // 地理区域比视口更高，以高度为基准
+            v_pixel = availableHeight;
+            h_pixel = v_pixel * geoRatio;  // 宽度按比例放大
+        }
+    } else {
+        h_pixel = availableWidth;
+        v_pixel = availableHeight;
+    }
+
+    if (h_pixel < 100) h_pixel = 100;
+    if (v_pixel < 100) v_pixel = 100;
 }
 
 bool RailMapViewerWidget::pointInPolygon(const QPointF& point, const QList<QPointF>& polygon) {

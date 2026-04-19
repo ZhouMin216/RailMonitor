@@ -69,3 +69,5 @@ QHeaderView::section {
     border: none;
     font-weight: bold;
 }
+
+:focus { outline: none; }

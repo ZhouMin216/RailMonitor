@@ -163,6 +163,8 @@ LoginDialog::LoginDialog(QWidget *parent)
 
     // 聚焦到用户名
     usernameEdit->setFocus();
+
+    loginButton->setDefault(true);
 }
 
 void LoginDialog::onAccepted()
