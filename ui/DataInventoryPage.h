@@ -16,6 +16,7 @@
 
 #include <QTextDocument>
 #include <QTime>
+#include <QPushButton>
 
 // 卡片类（复用）
 class StatCard : public QWidget {
@@ -26,6 +27,11 @@ public:
         : QWidget(parent), m_title(title), m_icon(icon), m_borderColor(borderColor) {
         setFixedHeight(100);
         setStyleSheet("background: #0d152a; border-radius: 12px;");
+        m_title_text = m_title;
+    }
+
+    void updateTitle(int total) {
+        m_title_text = m_title + QString("\t%1").arg(total);
     }
 
     void setValue(const QString &value) {
@@ -73,7 +79,7 @@ protected:
         // 先绘制纯标题（如果需要分离标题和数值，可以保留这部分）
         painter.setFont(titleFont);
         painter.setPen(QColor(150, 170, 200));
-        painter.drawText(titleRect, Qt::AlignLeft | Qt::AlignTop, m_title);
+        painter.drawText(titleRect, Qt::AlignLeft | Qt::AlignTop, m_title_text);
 
         // 将整个 m_value (包含主数值和子信息) 绘制在 valueRect 区域
         // 并手动设置其顶部偏移以模拟原来的位置
@@ -83,7 +89,7 @@ protected:
     }
 
 private:
-    QString m_title, m_icon, m_value;
+    QString m_title, m_title_text, m_icon, m_value;
     QColor m_borderColor;
 };
 
@@ -106,9 +112,11 @@ public slots:
 
 signals:
     void dataChanged();
+    void dataInventoryConfig(const QString &path, const QTime &time);
 
 private:
     void performExport();
+    void showExportConfigDialog();
 
 private:
     // 子控件
@@ -119,8 +127,10 @@ private:
     StatCard *m_lowBatCard;
 
     // --- 使用 Qt Charts 替换 DonutChart ---
-    QChartView *m_chartView;
-    QPieSeries *m_pieSeries;
+    QChartView *m_shoeChartView;
+    QChartView *m_cabinetChartView;
+    QPieSeries *m_shoePieSeries;
+    QPieSeries *m_cabinetPieSeries;
 
     QLabel *m_legend;
 
@@ -131,6 +141,10 @@ private:
     QString export_path_;
     QTime export_time_;
     QDate last_export_date_;   // 记录上次成功导出的日期
+
+    QLabel* m_exportTimeLabel;
+    QLabel* m_exportPathLabel;
+    QPushButton* m_configButton;
 };
 
 #endif // DATAINVENTORYPAGE_H

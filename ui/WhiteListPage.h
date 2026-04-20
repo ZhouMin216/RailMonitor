@@ -60,8 +60,6 @@ signals:
     void entryRemoved(quint32 uid);
     void getWhitelist(quint32 uid); // uid等于0时获取全部白名单
 
-    void dataInventoryConfig(const QString &path, const QTime &time);
-
 public slots:
     void refreshTable(const WhitelistMap &entries);
     void onAddClicked();
@@ -69,9 +67,6 @@ public slots:
     void onDeleteClicked(int row);
     void handleOperateResult(bool ok, const QString& msg);
     void onSaveGlobalConfig();
-
-    void handleDataInventoryConfig(const QString &path, const QTime &time);
-
 private:
     void setupUI();
     void populateTable(const WhitelistMap &entries);
@@ -92,9 +87,6 @@ private:
     QString m_editingUidStr; // 临时存储正在编辑的 UID 字符串（用于按钮文本切换）
 
     WhitelistMap m_whitelist;
-
-    QLabel* m_exportPathLabel = nullptr;
-    QTimeEdit* m_timeEdit = nullptr;
 };
 
 #endif // WHITELISTPAGE_H

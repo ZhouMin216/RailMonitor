@@ -50,11 +50,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         WhitelistSync response(0x00, whitelist);
         networkManager->sendRequest(response);
     });
-    connect(m_databaseManager, &DatabaseManager::dataInventoryConfigLoaded, whiteListPage_, &WhiteListPage::handleDataInventoryConfig);
-    connect(whiteListPage_, &WhiteListPage::dataInventoryConfig, m_databaseManager, &DatabaseManager::handleDataInventoryConfig);
-
+    connect(dataInventoryPage_, &DataInventoryPage::dataInventoryConfig, m_databaseManager, &DatabaseManager::handleDataInventoryConfig);
     connect(m_databaseManager, &DatabaseManager::dataInventoryConfigLoaded, dataInventoryPage_, &DataInventoryPage::handleDataInventoryConfig);
-    connect(whiteListPage_, &WhiteListPage::dataInventoryConfig, dataInventoryPage_, &DataInventoryPage::handleDataInventoryConfig);
 
 
     m_databaseManager->initDatabase();
@@ -160,7 +157,7 @@ void MainWindow::setupUI() {
     cabinetBtn = new QPushButton("鞋柜管理");
     // netBtn = new QPushButton("网络设置");
     dataInventoryBtn_ = new QPushButton("数据盘点");
-    whiteListBtn_ = new QPushButton("系统配置");
+    whiteListBtn_ = new QPushButton("白名单配置");
 
     // 设置按钮为可选中（checkable），实现互斥
     mapBtn->setCheckable(true);

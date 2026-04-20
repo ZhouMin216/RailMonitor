@@ -20,6 +20,7 @@
 #include <QGraphicsDropShadowEffect>  // 新增
 #include <QRadialGradient>            // 新增
 #include <QScrollBar>
+#include <QTimer>
 #include "DeviceManager.h"
 
 RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
@@ -119,6 +120,15 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     // connect(view, &QGraphicsView::resizeEvent, this, &RailMapViewerWidget::updateLegendPosition);
     connect(view->horizontalScrollBar(), &QAbstractSlider::valueChanged, this, &RailMapViewerWidget::updateLegendPosition);
     connect(view->verticalScrollBar(), &QAbstractSlider::valueChanged, this, &RailMapViewerWidget::updateLegendPosition);
+
+    // 启动定时器刷新时间
+    QTimer *timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, [this](){
+        for (auto it = shoeMap.constBegin(); it != shoeMap.constEnd(); ++it) {
+            it.value()->updateVisible();
+        }
+    });
+    timer->start(500); // 每秒更新一次
 }
 
 RailMapViewerWidget::~RailMapViewerWidget() {
@@ -522,10 +532,10 @@ void RailMapViewerWidget::updateCabinets(const QList<CabinetData>& data)
 }
 
 void RailMapViewerWidget::dataUpdated(){
-    QMap<quint16, std::shared_ptr<IconShoe>> shoeMap = DeviceManager::instance()->getShoeMap();
-    if (!shoeMap.isEmpty()) {
+    QMap<quint16, std::shared_ptr<IconShoe>> shoe_map = DeviceManager::instance()->getShoeMap();
+    if (!shoe_map.isEmpty()) {
         QList<ShoeData> data_list;
-        for (auto it = shoeMap.constBegin(); it != shoeMap.constEnd(); ++it) {
+        for (auto it = shoe_map.constBegin(); it != shoe_map.constEnd(); ++it) {
             quint16 key = it.key();
             std::shared_ptr<IconShoe> shoe = it.value();
 
@@ -722,7 +732,7 @@ void RailMapViewerWidget::createLegend() {
     // bg->setRadius(6); // 圆角
     legendGroup->addToGroup(bg);
 
-    int y = 10; // 起始 Y 坐标
+    int y = 20; // 起始 Y 坐标
     const int lineHeight = 25;
     const int iconX = 20;
     const int textX = 70;
@@ -799,25 +809,25 @@ void RailMapViewerWidget::createLegend() {
     }
 
     // 5. 铁鞋：圆形（在线状态：青绿色）
-    {
-        QColor fillColor = QColor("#00ffcc");
-        QColor borderColor = QColor("#00ccaa");
-        QRadialGradient grad(iconX, y + 6, 15);
-        grad.setColorAt(0, fillColor.lighter(130));
-        grad.setColorAt(1, fillColor);
+    // {
+    //     QColor fillColor = QColor("#00ffcc");
+    //     QColor borderColor = QColor("#00ccaa");
+    //     QRadialGradient grad(iconX, y + 6, 15);
+    //     grad.setColorAt(0, fillColor.lighter(130));
+    //     grad.setColorAt(1, fillColor);
 
-        QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX, y + 8, 12, 12);
-        ellipse->setPen(QPen(borderColor, 1.5));
-        ellipse->setBrush(grad);
-        legendGroup->addToGroup(ellipse);
+    //     QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX, y + 8, 12, 12);
+    //     ellipse->setPen(QPen(borderColor, 1.5));
+    //     ellipse->setBrush(grad);
+    //     legendGroup->addToGroup(ellipse);
 
-        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋在线");
-        text->setFont(font);
-        text->setDefaultTextColor(Qt::white);
-        text->setPos(textX, y);
-        legendGroup->addToGroup(text);
-        y += lineHeight;
-    }
+    //     QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋在线");
+    //     text->setFont(font);
+    //     text->setDefaultTextColor(Qt::white);
+    //     text->setPos(textX, y);
+    //     legendGroup->addToGroup(text);
+    //     y += lineHeight;
+    // }
 
     {
         QColor fillColor = QColor("#ffd166");
@@ -831,7 +841,7 @@ void RailMapViewerWidget::createLegend() {
         ellipse->setBrush(grad);
         legendGroup->addToGroup(ellipse);
 
-        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋离线");
+        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋异常");
         text->setFont(font);
         text->setDefaultTextColor(Qt::white);
         text->setPos(textX, y);
@@ -851,7 +861,7 @@ void RailMapViewerWidget::createLegend() {
         ellipse->setBrush(grad);
         legendGroup->addToGroup(ellipse);
 
-        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋异常");
+        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋在线");
         text->setFont(font);
         text->setDefaultTextColor(Qt::white);
         text->setPos(textX, y);
@@ -913,18 +923,21 @@ DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, 
     setVisible(shoeData.byOnline != ShoeStatus::InCabinet);
 }
 
+void DeviceMarkerItem::updateVisible(){
+    if (shoeData.byOnline == ShoeStatus::Online && shoeData.byBatVal > 20) return;
+    if (shoeData.byOnline == ShoeStatus::InCabinet) return;
+    setVisible(!isVisible());
+}
+
 void DeviceMarkerItem::setupUI()
 {
     QColor fillColor, borderColor;
-    if (shoeData.byOnline == ShoeStatus::Online) {
-        fillColor = QColor("#00ffcc");
-        borderColor = QColor("#00ccaa");
-    } else if (shoeData.byOnline == ShoeStatus::Offline) {
-        fillColor = QColor("#ffd166");
-        borderColor = QColor("#ffaa33");
-    } else {
+    if (shoeData.byOnline == ShoeStatus::Online && shoeData.byBatVal > 20) {
         fillColor = QColor("#ff0000");
         borderColor = QColor("#ff4444");
+    } else  {
+        fillColor = QColor("#ffd166");
+        borderColor = QColor("#ffaa33");
     }
 
     QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(-5, -5, 10, 10);
@@ -967,15 +980,12 @@ void DeviceMarkerItem::updateData(const ShoeData& data)
         QGraphicsEllipseItem* ellipse = dynamic_cast<QGraphicsEllipseItem*>(childItems()[0]);
         if (ellipse) {
             QColor fillColor, borderColor;
-            if (data.byOnline == ShoeStatus::Online) {
-                fillColor = QColor("#00ffcc");
-                borderColor = QColor("#00ccaa");
-            } else if (data.byOnline == ShoeStatus::Offline) {
-                fillColor = QColor("#ffd166");
-                borderColor = QColor("#ffaa33");
-            } else {
+            if (data.byOnline == ShoeStatus::Online && shoeData.byBatVal > 20) {
                 fillColor = QColor("#ff0000");
                 borderColor = QColor("#ff4444");
+            } else {
+                fillColor = QColor("#ffd166");
+                borderColor = QColor("#ffaa33");
             }
             ellipse->setPen(QPen(borderColor, 1.5));
             QRadialGradient grad(-5, -5, 15);

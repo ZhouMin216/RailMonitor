@@ -27,7 +27,7 @@ QString EnumtoString(StorageStatus status) {
     switch (status) {
     case StorageStatus::Offline: return QStringLiteral("铁鞋离位");
     case StorageStatus::Online:  return QStringLiteral("铁鞋在位");
-    case StorageStatus::Unusual:  return QStringLiteral("异常");
+    case StorageStatus::Unusual:  return QStringLiteral("仓位异常");
     case StorageStatus::Unregister: return QStringLiteral("未注册");
     case StorageStatus::PosFault: return QStringLiteral("错位");
     default: return "未知";

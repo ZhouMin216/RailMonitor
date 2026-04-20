@@ -147,7 +147,7 @@ QWidget* ShoeCabinetPage::createCabinetCard(quint16 cabinetId, const std::shared
     card->setStyleSheet(
         "#cabinetCard {"
         "  background: #1a1a2e;"
-        "  border: 1px solid #2d2d44;"
+        "  border: 2px solid #00ccff;"
         "  border-radius: 12px;"
         "  padding: 16px;"
         "}"
@@ -204,6 +204,9 @@ QWidget* ShoeCabinetPage::createCabinetCard(quint16 cabinetId, const std::shared
     auto statusList = cabinet->GetCabinetData().storeStatus;
     static const int cols = 2;        // 固定 2 列
 
+    int totalCells = statusList.size();
+    int rows = (totalCells + cols - 1) / cols; // 向上取整
+
     auto gridLayout = new QGridLayout;
     gridLayout->setSpacing(5);
     for (int i = 0; i < statusList.size(); ++i) {
@@ -238,6 +241,11 @@ QWidget* ShoeCabinetPage::createCabinetCard(quint16 cabinetId, const std::shared
         }
 
         gridLayout->addWidget(cell, row, col);
+    }
+    if (rows > 0) {
+        // 在最后一行之后添加一行 stretch
+        gridLayout->setRowStretch(rows, 1); // 第 `rows` 行（索引从0开始，所以这是新行）
+        // 注意：不需要 addWidget，stretch 行可以是空的
     }
 
     layout->addLayout(gridLayout);

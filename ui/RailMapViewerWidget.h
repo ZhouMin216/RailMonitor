@@ -123,6 +123,7 @@ public:
     ShoeStatus getPrevStatus() { return prevStatus_;}
     bool isInPolygon() { return inPolygon_;}
     void setInPolygon(bool in) { inPolygon_ = in; }
+    void updateVisible();
 
 private:
     void setupUI();
