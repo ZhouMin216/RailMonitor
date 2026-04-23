@@ -351,8 +351,8 @@ void RailMapViewerWidget::drawTracks() {
 
 void RailMapViewerWidget::drawBuildings() {
     QColor topColor(20, 20, 40, 220);      // 顶部深灰蓝
-    QColor sideColor(230, 230, 240, 255);  // 侧面浅灰（参考您截图的灰色调）
-    QColor frontColor(180, 180, 190, 255);    // 正面深灰（可选）
+    QColor sideColor(180, 180, 190, 125);  // 侧面浅灰（参考您截图的灰色调）
+    QColor frontColor(70, 70, 80, 125);    // 正面深灰（可选）
     QColor edgeColor(74, 106, 255, 220);   // 边框亮蓝
 
     QPen pen(edgeColor, 1.5);

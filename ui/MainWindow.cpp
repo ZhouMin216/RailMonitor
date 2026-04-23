@@ -68,11 +68,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     whiteListPage_->getAllWhitelist();
 
     // 登录窗口
-    // loginDialog = new LoginDialog(this);
-    // QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {
-    //     loginDialog->hide();           // 隐藏登录框
-    // });
-    // loginDialog->show();
+    loginDialog = new LoginDialog(this);
+    QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {
+        loginDialog->hide();           // 隐藏登录框
+    });
+    loginDialog->show();
 }
 
 void MainWindow::applyFlatStyle() {
@@ -102,6 +102,7 @@ void MainWindow::setupUI() {
     // netPage = new NetworkConfigPage(this);
     dataInventoryPage_ = new DataInventoryPage(this);
     whiteListPage_ = new WhiteListPage(this);
+    eventPage_ = new EventPage(this);
 
     contentStack = new QStackedWidget;
     contentStack->addWidget(mapPage);
@@ -109,6 +110,7 @@ void MainWindow::setupUI() {
     contentStack->addWidget(cabinetPage);
     // contentStack->addWidget(netPage);
     contentStack->addWidget(dataInventoryPage_);
+    contentStack->addWidget(eventPage_);
     contentStack->addWidget(whiteListPage_);
     // ========== 添加顶部标题栏 ==========
     QWidget *headerWidget = new QWidget;
@@ -157,6 +159,7 @@ void MainWindow::setupUI() {
     cabinetBtn = new QPushButton("鞋柜管理");
     // netBtn = new QPushButton("网络设置");
     dataInventoryBtn_ = new QPushButton("数据盘点");
+    eventPageBtn_ =  new QPushButton("事件记录");
     whiteListBtn_ = new QPushButton("白名单配置");
 
     // 设置按钮为可选中（checkable），实现互斥
@@ -165,6 +168,7 @@ void MainWindow::setupUI() {
     cabinetBtn->setCheckable(true);
     // netBtn->setCheckable(true);
     dataInventoryBtn_->setCheckable(true);
+    eventPageBtn_->setCheckable(true);
     whiteListBtn_->setCheckable(true);
 
     // 默认选中第一个
@@ -175,7 +179,8 @@ void MainWindow::setupUI() {
     connect(tieShoeBtn, &QPushButton::clicked, this, [this]() { switchPage(1); });
     connect(cabinetBtn, &QPushButton::clicked, this, [this]() { switchPage(2); });
     connect(dataInventoryBtn_, &QPushButton::clicked, this, [this]() { switchPage(3); });
-    connect(whiteListBtn_, &QPushButton::clicked, this, [this]() { switchPage(4); });
+    connect(eventPageBtn_, &QPushButton::clicked, this, [this]() { switchPage(4); });
+    connect(whiteListBtn_, &QPushButton::clicked, this, [this]() { switchPage(5); });
 
     // connect(netPage, &NetworkConfigPage::connectRequested,
     //         this, &MainWindow::onConnectRequested);
@@ -196,6 +201,7 @@ void MainWindow::setupUI() {
     navLayout->addWidget(tieShoeBtn);
     navLayout->addWidget(cabinetBtn);
     navLayout->addWidget(dataInventoryBtn_);
+    navLayout->addWidget(eventPageBtn_);
     navLayout->addWidget(whiteListBtn_);
     navLayout->addStretch(); // 推开下方的退出按钮
 
@@ -249,7 +255,8 @@ void MainWindow::switchPage(int index) {
     tieShoeBtn->setChecked(index == 1);
     cabinetBtn->setChecked(index == 2);
     dataInventoryBtn_->setChecked(index == 3);
-    whiteListBtn_->setChecked(index == 4);
+    eventPageBtn_->setChecked(index == 4);
+    whiteListBtn_->setChecked(index == 5);
 }
 
 void MainWindow::handleTcpMessage(const QVariantMap &msg) {

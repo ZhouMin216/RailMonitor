@@ -58,10 +58,9 @@ double convertDmToDecimal(qint16 degrees, qint32 minutes) {
     // return degrees + minutes / 60.0;
     QString tmp = QString("0.%1").arg(minutes);
     float value = tmp.toDouble();
-    // return degrees + minutes / 10000000.0;
-    return degrees + value;
+    // return degrees + value;
 
-    qDebug() << " ================= protocol value: " <<  degrees + value  << " ------------------ ";
+    // qDebug() << " ================= protocol value: " <<  degrees + value  << " ------------------ ";
     return sf_extract_to_wgs84(degrees + value);
 }
 
