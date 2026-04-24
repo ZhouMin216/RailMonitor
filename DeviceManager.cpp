@@ -56,7 +56,7 @@ DeviceManager::DeviceManager(QObject *parent)
 }
 
 void DeviceManager::loadConfig(){
-    QString configPath = QDir::currentPath() + "/rail_config.json";
+    QString configPath = QDir::currentPath() + "/runtime_rail_config.json";
     QFile file(configPath);
     if (!file.open(QIODevice::ReadOnly)) {
         QMessageBox::critical(nullptr, tr("错误"), tr("配置文件未找到：") + configPath);

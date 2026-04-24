@@ -254,7 +254,7 @@ void DataInventoryPage::handleDataInventoryConfig(const QString &path, const QTi
 
 void DataInventoryPage::exportData(){
     if (export_path_.isEmpty() || export_path_ == "未选择目录" || !export_time_.isValid()) {
-        qDebug() << " 导出条件不成立 ";
+        // qDebug() << " 导出条件不成立 ";
         return;
     }
 

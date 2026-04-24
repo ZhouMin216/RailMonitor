@@ -375,6 +375,7 @@ void WhiteListPage::onAddClicked()
     m_lineName->clear();
     m_lineUid->clear();
     m_lineDept->clear();
+    m_lineUid->setEnabled(true);
 }
 
 void WhiteListPage::onEditClicked(int row)

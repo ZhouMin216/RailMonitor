@@ -49,6 +49,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         }
         WhitelistSync response(0x00, whitelist);
         networkManager->sendRequest(response);
+        qDebug() << "send whitelist" ;
     });
     connect(dataInventoryPage_, &DataInventoryPage::dataInventoryConfig, m_databaseManager, &DatabaseManager::handleDataInventoryConfig);
     connect(m_databaseManager, &DatabaseManager::dataInventoryConfigLoaded, dataInventoryPage_, &DataInventoryPage::handleDataInventoryConfig);
