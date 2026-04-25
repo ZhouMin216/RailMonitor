@@ -164,7 +164,7 @@ QWidget* ShoeCabinetPage::createCabinetCard(quint16 cabinetId, const std::shared
     // === 标题区 ===
     auto titleLayout = new QHBoxLayout;
     QString name = "鞋柜" ;
-    auto titleLabel = new QLabel(QString("#%1 %2").arg(cabinetId, 3, 10, QChar('0')).arg(name));
+    auto titleLabel = new QLabel(QString("#%1 %2").arg(cabinet->GetCabinetData().aliasID, 3, 10, QChar('0')).arg(name));
     titleLabel->setFont(QFont("Microsoft YaHei", 14, QFont::Bold));
     titleLayout->addWidget(titleLabel);
 

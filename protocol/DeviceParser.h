@@ -42,6 +42,7 @@ struct ShoeData {
 // 柜子数据结构体
 struct CabinetData {
     quint16 wDevID;        // 设备 ID (U16)
+    quint16 aliasID{0};        // 别名 ID (U16)
     CabinetStatus byOnline{CabinetStatus::Offline}; // 在线状态
     quint8 byStoreNum;     // 仓位数
     QByteArray abyStatus;  // 仓位状态数组

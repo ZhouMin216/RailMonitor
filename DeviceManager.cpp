@@ -12,13 +12,14 @@ IconShoe::IconShoe(quint16 id, quint16 cabinet_id,  QString painted_id)
     shoeData_.paintedID = painted_id;
 }
 
-ShoeCabinet::ShoeCabinet(quint16 id, quint8 store_num, QPointF pos, QList<quint16> shoe_ids)
-    : cabinet_id_(id), store_num_(store_num), pos_(pos){
+ShoeCabinet::ShoeCabinet(quint16 id, quint16 alias_id, quint8 store_num, QPointF pos, QList<quint16> shoe_ids)
+    : cabinet_id_(id),alias_id_(alias_id), store_num_(store_num), pos_(pos){
     initStoreStatus(shoe_ids);
 }
 
 void ShoeCabinet::initStoreStatus(QList<quint16> shoe_ids){
     data_.wDevID = cabinet_id_;
+    data_.aliasID = alias_id_;
     data_.byStoreNum = store_num_;
     data_.storeStatus.clear();
     for (const auto& shoeId : shoe_ids){
@@ -124,6 +125,7 @@ void DeviceManager::loadConfig(){
         QJsonObject p = val.toObject();
 
         quint16 cabinet_id = static_cast<quint16>(p["id"].toInt());
+        quint16 alias_id = static_cast<quint16>(p["alias_id"].toInt());
         if (cabinet_Map_.contains(cabinet_id) || cabinet_config_.contains(cabinet_id)){
             QMessageBox::critical(nullptr, tr("错误"), tr("铁鞋柜ID重复：") + QString("%1").arg(cabinet_id));
             QApplication::quit();
@@ -148,7 +150,7 @@ void DeviceManager::loadConfig(){
             quint16 shoe_id = shoe_id_config_[painted_id];
             shoe_id_list.push_back(shoe_id);
 
-            std::shared_ptr<IconShoe> shoe = std::make_shared<IconShoe>(shoe_id, cabinet_id, painted_id);
+            std::shared_ptr<IconShoe> shoe = std::make_shared<IconShoe>(shoe_id, alias_id, painted_id);
             if (shoe_map_.contains(shoe_id)){
                 QMessageBox::critical(nullptr, tr("错误"), tr("铁鞋ID重复：") + QString("%1").arg(shoe_id));
                 QApplication::quit();
@@ -157,7 +159,7 @@ void DeviceManager::loadConfig(){
             qDebug() << "Cabinet " << cabinet_id << " painted_id" << painted_id << "-> shoe_id:" << shoe_id;
         }
 
-        std::shared_ptr<ShoeCabinet> cabinet = std::make_shared<ShoeCabinet>(cabinet_id, store_num, pos, shoe_id_list);
+        std::shared_ptr<ShoeCabinet> cabinet = std::make_shared<ShoeCabinet>(cabinet_id, alias_id, store_num, pos, shoe_id_list);
 
         cabinet_Map_[cabinet_id] = cabinet;
         cabinet_config_[cabinet_id] = shoe_id_list;

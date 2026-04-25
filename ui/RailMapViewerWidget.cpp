@@ -245,7 +245,7 @@ void RailMapViewerWidget::loadConfig() {
     for (const QJsonValue &val : shoeCabinetArray) {
         if (val.isObject()) {
             QJsonObject p = val.toObject();
-            quint16 id = p["id"].toInt();
+            quint16 id = p["alias_id"].toInt();
             double lng = p["lng"].toDouble();
             double lat = p["lat"].toDouble();
             shoeCabinetPoints[id] = QPointF(lat, lng);
@@ -525,8 +525,8 @@ void RailMapViewerWidget::clearFence() {
 void RailMapViewerWidget::updateCabinets(const QList<CabinetData>& data)
 {
     for(const auto& cabinet : data) {
-        if (shoeCabinet.contains(cabinet.wDevID)) {
-            shoeCabinet[cabinet.wDevID]->updateData(cabinet);
+        if (shoeCabinet.contains(cabinet.aliasID)) {
+            shoeCabinet[cabinet.aliasID]->updateData(cabinet);
         }
     }
 }
@@ -1026,7 +1026,7 @@ void ShoeCabinetItem::updateData(const CabinetData& data)
 {
     cabinetData = data;
     simulatedParams.clear();
-    simulatedParams["设备ID"] = data.wDevID;
+    simulatedParams["设备ID"] = data.aliasID;
     simulatedParams["仓位数"] = data.byStoreNum;
     simulatedParams["在线状态"] = EnumtoString(data.byOnline);
     // if (data.byStoreNum > 0 && data.abyStatus.size() >= data.byStoreNum) {

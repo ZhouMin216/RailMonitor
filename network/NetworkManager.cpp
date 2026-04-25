@@ -289,7 +289,7 @@ void NetworkManager::onTcpReadyRead() {
                 // if (!shoes.empty()) {
                 //     emit shoeData(shoes);
                 // }
-                if (DeviceManager::instance()->updateShoeStatus(device.getShoeData()) &&
+                if (DeviceManager::instance()->updateShoeStatus(device.getShoeData()) ||
                     DeviceManager::instance()->updateCabinetStatus(device.getCabinetData())) {
                     emit statusDataUpdated();
                 }

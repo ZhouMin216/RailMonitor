@@ -44,10 +44,13 @@ private:
 class ShoeCabinet
 {
 public:
-    ShoeCabinet(quint16 id, quint8 store_num, QPointF pos, QList<quint16> shoe_ids);
+    ShoeCabinet(quint16 id, quint16 alias_id, quint8 store_num, QPointF pos, QList<quint16> shoe_ids);
 
     const CabinetData& GetCabinetData() { return data_;}
-    void SetData(const CabinetData& data) { data_ = data;}
+    void SetData(const CabinetData& data) {
+        data_ = data;
+        data_.aliasID = alias_id_;
+    }
     quint16 GetCabinetID() { return cabinet_id_;}
     quint8 GetStoreNum() { return store_num_;}
     void AddIconShoe(quint8 store_idx, std::shared_ptr<IconShoe> shoe){
@@ -63,6 +66,7 @@ private:
 
 private:
     quint16 cabinet_id_; // 鞋柜ID
+    quint16 alias_id_; // 鞋柜别名ID
     CabinetData data_;
     quint8 store_num_; // 仓位数量
     // quint8 enable_store_num_; // 实际配置了铁鞋的仓位数量
