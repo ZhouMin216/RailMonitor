@@ -9,7 +9,7 @@ enum class ShoeStatus{Offline = 0x00, Online = 0x01, InCabinet = 0x02, Unregiste
 // 鞋柜状态
 enum class CabinetStatus{Offline = 0x00, Online = 0x01, Unregister = 0x02, NoEnter = 0x04};
 // 鞋柜仓位状态
-enum class StorageStatus{Unusual = 0x00, Offline = 0x01, Online = 0x02, Unregister = 0x03, PosFault = 0x04};
+enum class StorageStatus{Offline = 0x00, Online = 0x01, Unusual = 0x02, Unregister = 0x03, PosFault = 0x04};
 enum PosQuality{
     NoPos = 0x00, SinglepointPos = 0x01, DiffPos = 0x02,
     PPSpos = 0x03, RTKfixed = 0x04, RTKfloating = 0x05 // RTKfixed 定位质量最好
