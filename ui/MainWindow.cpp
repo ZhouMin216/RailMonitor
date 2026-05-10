@@ -271,11 +271,6 @@ void MainWindow::handleTcpMessage(const QVariantMap &msg) {
 
 void MainWindow::onConnectRequested(const QString &ip, int port) {
     qDebug() << ip << " " << port;
-    // if (tcpClient->connectToServer(ip, port)) {
-    //     QMessageBox::information(this, "成功", "已连接到服务器");
-    // } else {
-    //     QMessageBox::warning(this, "失败", "连接失败");
-    // }
 }
 
 void MainWindow::onDisconnectRequested() {

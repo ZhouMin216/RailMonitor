@@ -10,5 +10,7 @@
         <file alias="delete.svg">resources/assets/delete.svg</file>
         <file alias="edit.svg">resources/assets/edit.svg</file>
         <file alias="whitelist_icon.svg">resources/assets/whitelist_icon.svg</file>
+        <file alias="cabinet.svg">resources/assets/cabinet.svg</file>
+        <file alias="signal.svg">resources/assets/signal.svg</file>
     </qresource>
 </RCC>

@@ -68,6 +68,7 @@ private:
     void drawViaPoints();
     void drawFence();
     void drawShoeCabinet();
+    void drawBaseStation();
     void updateFencePreview();
     void updateAspectRatio();
     void rotateScene(float angle);
@@ -83,6 +84,7 @@ private:
     QMap<QString, QPointF> viaPoints;
     QMap<QString, QPointF> buildPoints;
     QMap<quint16, QPointF> shoeCabinetPoints;
+    QMap<quint16, QPointF> baseStationPoints;
     QList<QVariantMap> tracks;
     QList<QVariantMap> buildings;
     QMap<quint16,ShoeCabinetItem*> shoeCabinet;

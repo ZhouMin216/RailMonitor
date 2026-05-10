@@ -22,6 +22,7 @@
 #include <QScrollBar>
 #include <QTimer>
 #include "DeviceManager.h"
+#include "utils.h"
 
 RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     : QWidget(parent) {
@@ -252,6 +253,18 @@ void RailMapViewerWidget::loadConfig() {
         }
     }
 
+    baseStationPoints.clear();
+    const QJsonArray& baseStationArray = root["baseStation"].toArray();
+    for (const QJsonValue &val : baseStationArray) {
+        if (val.isObject()) {
+            QJsonObject p = val.toObject();
+            quint16 id = p["id"].toInt();
+            double lng = p["lng"].toDouble();
+            double lat = p["lat"].toDouble();
+            baseStationPoints[id] = QPointF(lng, lat);
+        }
+    }
+
     if (railTracks_.isEmpty() || buildings_.isEmpty()) return;
 
     minLat = maxLat = buildings_.first().points.first().y();
@@ -300,6 +313,7 @@ void RailMapViewerWidget::drawAll() {
     drawBuildings();
     drawFence();
     drawShoeCabinet();
+    drawBaseStation();
 
     createLegend();
 
@@ -471,6 +485,20 @@ void RailMapViewerWidget::drawShoeCabinet(){
     dataUpdated();
 }
 
+void RailMapViewerWidget::drawBaseStation(){
+    for (auto it = baseStationPoints.constBegin(); it != baseStationPoints.constEnd(); ++it) {
+        QPointF pt = it.value();
+        QPixmap pixmap(coloredSvg(":/icon/signal.svg", QColor("#38BDF8"), 24, 24)); // 使用文件路径
+        QGraphicsPixmapItem *iconItem = new QGraphicsPixmapItem(pixmap);
+        iconItem->setOffset(-12, -12); // 居中
+        iconItem->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+
+        auto pos = geoToPixel(pt.x(), pt.y());
+        iconItem->setPos(pos.x(), pos.y());
+        scene->addItem(iconItem);
+    }
+}
+
 void RailMapViewerWidget::updateFencePreview() {
     if (fenceItem) {
         scene->removeItem(fenceItem);
@@ -597,8 +625,10 @@ void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
     }
 
     if (!outOfFenceIds.isEmpty()) {
+        // NonModalMessageBox::warning(this, "警告",
+        //                      QString("以下铁鞋已超出电子围栏：%1").arg(outOfFenceIds.join(", ")));
         QMessageBox::warning(this, "警告",
-                             QString("以下铁鞋已超出电子围栏：%1").arg(outOfFenceIds.join(", ")));
+                                    QString("以下铁鞋已超出电子围栏：%1").arg(outOfFenceIds.join(", ")));
     }
 }
 
@@ -732,7 +762,7 @@ void RailMapViewerWidget::createLegend() {
     // bg->setRadius(6); // 圆角
     legendGroup->addToGroup(bg);
 
-    int y = 20; // 起始 Y 坐标
+    int y = 10; // 起始 Y 坐标
     const int lineHeight = 25;
     const int iconX = 20;
     const int textX = 70;
@@ -789,18 +819,45 @@ void RailMapViewerWidget::createLegend() {
 
     // 4. 鞋柜：紫色小矩形
     {
-        QColor fillColor = QColor("#b967ff");
-        QColor borderColor = QColor("#9955dd");
-        QRadialGradient grad(iconX, y + 6, 12);
-        grad.setColorAt(0, QColor("#ffffff"));
-        grad.setColorAt(1, fillColor);
+        // QColor fillColor = QColor("#b967ff");
+        // QColor borderColor = QColor("#9955dd");
+        // QRadialGradient grad(iconX, y + 6, 12);
+        // grad.setColorAt(0, QColor("#ffffff"));
+        // grad.setColorAt(1, fillColor);
 
-        QGraphicsRectItem *rect = new QGraphicsRectItem(iconX, y + 8, 12, 12);
-        rect->setPen(QPen(borderColor, 1.5));
-        rect->setBrush(grad);
-        legendGroup->addToGroup(rect);
+        // QGraphicsRectItem *rect = new QGraphicsRectItem(iconX, y + 8, 12, 12);
+        // rect->setPen(QPen(borderColor, 1.5));
+        // rect->setBrush(grad);
+
+        QPixmap pixmap(coloredSvg(":/icon/cabinet.svg", QColor("#38BDF8"), 24, 24)); // 使用文件路径
+        QGraphicsPixmapItem *iconItem = new QGraphicsPixmapItem(pixmap);
+        // iconItem->setOffset(-6, -9); // 居中：因为 pixmap 是 48x48，中心在 (0,0)
+        iconItem->setPos(iconX, y + 8);
+        legendGroup->addToGroup(iconItem);
+        // legendGroup->addToGroup(rect);
 
         QGraphicsTextItem *text = new QGraphicsTextItem("鞋柜");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y);
+        legendGroup->addToGroup(text);
+        y += (lineHeight * 1.5);
+    }
+
+    // 5. 铁鞋：圆形（离线状态：青绿色）
+    {
+        QColor fillColor = CustomColors::offlineFillColor();
+        QColor borderColor = CustomColors::offlineBorderColor();
+        QRadialGradient grad(iconX, y + 6, 15);
+        grad.setColorAt(0, fillColor.lighter(130));
+        grad.setColorAt(1, fillColor);
+
+        QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX, y + 8, 12, 12);
+        ellipse->setPen(QPen(borderColor, 1.5));
+        ellipse->setBrush(grad);
+        legendGroup->addToGroup(ellipse);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋离线");
         text->setFont(font);
         text->setDefaultTextColor(Qt::white);
         text->setPos(textX, y);
@@ -808,30 +865,9 @@ void RailMapViewerWidget::createLegend() {
         y += lineHeight;
     }
 
-    // 5. 铁鞋：圆形（在线状态：青绿色）
-    // {
-    //     QColor fillColor = QColor("#00ffcc");
-    //     QColor borderColor = QColor("#00ccaa");
-    //     QRadialGradient grad(iconX, y + 6, 15);
-    //     grad.setColorAt(0, fillColor.lighter(130));
-    //     grad.setColorAt(1, fillColor);
-
-    //     QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(iconX, y + 8, 12, 12);
-    //     ellipse->setPen(QPen(borderColor, 1.5));
-    //     ellipse->setBrush(grad);
-    //     legendGroup->addToGroup(ellipse);
-
-    //     QGraphicsTextItem *text = new QGraphicsTextItem("铁鞋在线");
-    //     text->setFont(font);
-    //     text->setDefaultTextColor(Qt::white);
-    //     text->setPos(textX, y);
-    //     legendGroup->addToGroup(text);
-    //     y += lineHeight;
-    // }
-
     {
-        QColor fillColor = QColor("#ffd166");
-        QColor borderColor = QColor("#ffaa33");
+        QColor fillColor = CustomColors::unusualFillColor();
+        QColor borderColor = CustomColors::unusualBorderColor();
         QRadialGradient grad(iconX, y + 6, 15);
         grad.setColorAt(0, fillColor.lighter(130));
         grad.setColorAt(1, fillColor);
@@ -850,8 +886,8 @@ void RailMapViewerWidget::createLegend() {
     }
 
     {
-        QColor fillColor = QColor("#ff0000");
-        QColor borderColor = QColor("#ff4444");
+        QColor fillColor = CustomColors::onlineFillColor();
+        QColor borderColor = CustomColors::onlineBorderColor();
         QRadialGradient grad(iconX, y + 6, 15);
         grad.setColorAt(0, fillColor.lighter(130));
         grad.setColorAt(1, fillColor);
@@ -932,12 +968,15 @@ void DeviceMarkerItem::updateVisible(){
 void DeviceMarkerItem::setupUI()
 {
     QColor fillColor, borderColor;
-    if (shoeData.byOnline == ShoeStatus::Online && shoeData.byBatVal > 20) {
-        fillColor = QColor("#ff0000");
-        borderColor = QColor("#ff4444");
+    if (shoeData.byBatVal < 20){
+        fillColor = CustomColors::unusualFillColor();
+        borderColor = CustomColors::unusualBorderColor();
+    } else if (shoeData.byOnline == ShoeStatus::Online) {
+        fillColor = CustomColors::onlineFillColor();
+        borderColor = CustomColors::onlineBorderColor();
     } else  {
-        fillColor = QColor("#ffd166");
-        borderColor = QColor("#ffaa33");
+        fillColor = CustomColors::offlineFillColor();
+        borderColor = CustomColors::offlineBorderColor();
     }
 
     QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(-5, -5, 10, 10);
@@ -951,6 +990,7 @@ void DeviceMarkerItem::setupUI()
     ellipse->setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
     addToGroup(ellipse);
+    setZValue(1000);
 }
 
 void DeviceMarkerItem::updateData(const ShoeData& data)
@@ -980,12 +1020,15 @@ void DeviceMarkerItem::updateData(const ShoeData& data)
         QGraphicsEllipseItem* ellipse = dynamic_cast<QGraphicsEllipseItem*>(childItems()[0]);
         if (ellipse) {
             QColor fillColor, borderColor;
-            if (data.byOnline == ShoeStatus::Online && shoeData.byBatVal > 20) {
-                fillColor = QColor("#ff0000");
-                borderColor = QColor("#ff4444");
+            if (data.byBatVal < 20){
+                fillColor = CustomColors::unusualFillColor();
+                borderColor = CustomColors::unusualBorderColor();
+            } else if (data.byOnline == ShoeStatus::Online) {
+                fillColor = CustomColors::onlineFillColor();
+                borderColor = CustomColors::onlineBorderColor();
             } else {
-                fillColor = QColor("#ffd166");
-                borderColor = QColor("#ffaa33");
+                fillColor = CustomColors::offlineFillColor();
+                borderColor = CustomColors::offlineBorderColor();
             }
             ellipse->setPen(QPen(borderColor, 1.5));
             QRadialGradient grad(-5, -5, 15);
@@ -1041,19 +1084,11 @@ void ShoeCabinetItem::updateData(const CabinetData& data)
 
 void ShoeCabinetItem::setupUI()
 {
-    QColor fillColor = QColor("#b967ff");
-    QColor borderColor = QColor("#9955dd");
-
-    QGraphicsRectItem *rect = new QGraphicsRectItem(-4, -4, 8, 8);
-    rect->setPen(QPen(borderColor, 1.5));
-    QRadialGradient grad(-4, -4, 12);
-    grad.setColorAt(0, QColor("#ffffff"));
-    grad.setColorAt(1, fillColor);
-    rect->setBrush(grad);
-    rect->setFlag(QGraphicsItem::ItemIsSelectable);
-    rect->setFlag(QGraphicsItem::ItemIsFocusable);
-
-    addToGroup(rect);
+    // 加载图片
+    QPixmap pixmap(coloredSvg(":/icon/cabinet.svg", QColor("#38BDF8"), 12,18)); // 或使用文件路径
+    QGraphicsPixmapItem *iconItem = new QGraphicsPixmapItem(pixmap);
+    iconItem->setOffset(-6, -9); // 居中：因为 pixmap 是 48x48，中心在 (0,0)
+    addToGroup(iconItem);
 }
 
 void ShoeCabinetItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {

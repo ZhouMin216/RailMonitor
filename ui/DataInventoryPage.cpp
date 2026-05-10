@@ -59,24 +59,24 @@ DataInventoryPage::DataInventoryPage(QWidget *parent)
     m_cabinetPieSeries->append("离线", 0)->setColor(QColor("#ffd166"));
 
     // ---隐藏饼图上的所有标签 ---
-    m_shoePieSeries->setLabelsVisible(false);
-    m_cabinetPieSeries->setLabelsVisible(false);
+    // m_shoePieSeries->setLabelsVisible(false);
+    // m_cabinetPieSeries->setLabelsVisible(false);
 
     // 配置切片标签和交互
     for (auto slice : m_shoePieSeries->slices()) {
-        slice->setLabelVisible(false);
+        slice->setLabelVisible(true);
         slice->setLabelPosition(QPieSlice::LabelOutside);
         slice->setBorderColor(Qt::transparent);
-        slice->setLabelBrush(QBrush(Qt::white)); // <-- 关键修改
+        slice->setLabelBrush(QBrush(Qt::white));
         slice->setBorderWidth(0);
         // 可选：鼠标悬停时高亮
         // slice->setExploded(true);
     }
     for (auto slice : m_cabinetPieSeries->slices()) {
-        slice->setLabelVisible(false);
+        slice->setLabelVisible(true);
         slice->setLabelPosition(QPieSlice::LabelOutside);
         slice->setBorderColor(Qt::transparent);
-        slice->setLabelBrush(QBrush(Qt::white)); // <-- 关键修改
+        slice->setLabelBrush(QBrush(Qt::white));
         slice->setBorderWidth(0);
         // 可选：鼠标悬停时高亮
         // slice->setExploded(true);
@@ -207,12 +207,21 @@ void DataInventoryPage::updateData(int totalCabinets, int onlineCabinets, int of
         slices[1]->setValue(inCabinetShoes);
         slices[2]->setValue(offlineShoes);
         slices[3]->setValue(lowBatteryShoes);
+
+        // 更新标签
+        // slices[0]->label();
+        slices[0]->setLabel("在线" + QString::number(onlineShoes));
+        slices[1]->setLabel("在柜" + QString::number(inCabinetShoes));
+        slices[2]->setLabel("离线" + QString::number(offlineShoes));
+        slices[3]->setLabel("低电量" + QString::number(lowBatteryShoes));
     }
 
     slices = m_cabinetPieSeries->slices();
     if (slices.size() >= 2) {
         slices[0]->setValue(onlineCabinets);
         slices[1]->setValue(offlineCabinets);
+        slices[0]->setLabel("在线" + QString::number(onlineCabinets));
+        slices[1]->setLabel("离线" + QString::number(offlineCabinets));
     }
 }
 

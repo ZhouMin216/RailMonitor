@@ -3,6 +3,54 @@
 
 #include <QSvgRenderer>
 #include <QPainter>
+#include <QMessageBox>
+
+namespace NonModalMessageBox {
+inline void warning(QWidget *parent, const QString &title, const QString &text) {
+    QMessageBox *msg = new QMessageBox(parent);
+    msg->setWindowTitle(title);
+    msg->setText(text);
+    msg->setIcon(QMessageBox::Warning);
+    msg->setStandardButtons(QMessageBox::Ok);
+    msg->setWindowModality(Qt::NonModal);          // 关键：非模态
+    msg->setAttribute(Qt::WA_DeleteOnClose);       // 自动销毁
+    msg->show();
+}
+
+// 可按需添加 information / critical 等
+}
+
+namespace CustomColors {
+    inline const QColor& offlineFillColor() {
+        static const QColor color{ "#ffd166" };
+        return color;
+    }
+
+    inline const QColor& offlineBorderColor() {
+        static const QColor color{ "#ffaa33" };
+        return color;
+    }
+
+    inline const QColor& unusualFillColor() {
+        static const QColor color{ "#ff0000" };
+        return color;
+    }
+
+    inline const QColor& unusualBorderColor() {
+        static const QColor color{ "#ff4444" };
+        return color;
+    }
+
+    inline const QColor& onlineFillColor() {
+        static const QColor color{ "#00ffcc" };
+        return color;
+    }
+
+    inline const QColor& onlineBorderColor() {
+        static const QColor color{ "#44ff44" };
+        return color;
+    }
+}
 
 static QPixmap coloredSvg(const QString &path, const QColor &color, int w, int h)
 {
