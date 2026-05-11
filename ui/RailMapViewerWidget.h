@@ -11,6 +11,7 @@
 #include <QMessageBox>
 #include <QGraphicsItemGroup>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 
 #include "protocol/DeviceParser.h"
 
@@ -24,6 +25,17 @@ struct RailTrack {
 struct Building {
     QString name;
     QList<QPointF> points;
+};
+
+class LockedGraphicsView : public QGraphicsView {
+public:
+    using QGraphicsView::QGraphicsView;
+
+protected:
+    void wheelEvent(QWheelEvent *event) override {
+        // 完全忽略滚轮缩放/滚动
+        event->accept();
+    }
 };
 
 class ShoeCabinetItem;
@@ -69,6 +81,7 @@ private:
     void drawFence();
     void drawShoeCabinet();
     void drawBaseStation();
+    void drawRoads();
     void updateFencePreview();
     void updateAspectRatio();
     void rotateScene(float angle);
@@ -85,6 +98,7 @@ private:
     QMap<QString, QPointF> buildPoints;
     QMap<quint16, QPointF> shoeCabinetPoints;
     QMap<quint16, QPointF> baseStationPoints;
+    QMap<QString, QList<QPointF> > roadPoints;
     QList<QVariantMap> tracks;
     QList<QVariantMap> buildings;
     QMap<quint16,ShoeCabinetItem*> shoeCabinet;

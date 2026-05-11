@@ -27,13 +27,13 @@
 RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     : QWidget(parent) {
     scene = new QGraphicsScene(this);
-    view = new QGraphicsView(scene);
+    view = new LockedGraphicsView(scene);
     view->setRenderHint(QPainter::Antialiasing, true);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     view->setStyleSheet("background: transparent; border: 2px solid #d3d3d3;");
     // 隐藏滚动条
     // view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    // view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     lngInput = new QLineEdit;
     lngInput->setPlaceholderText("经度 (e.g., 120.718)");
@@ -265,6 +265,29 @@ void RailMapViewerWidget::loadConfig() {
         }
     }
 
+    roadPoints.clear();
+    const QJsonArray& roadArray = root["road"].toArray();
+    for (const QJsonValue &val : roadArray) {
+        if (!val.isObject()) continue;
+        QJsonObject bObj = val.toObject();
+        QString name = bObj["name"].toString();
+
+        QList<QPointF> points;
+        if (bObj.contains("coordinates") && bObj["coordinates"].isArray()) {
+            for (const QJsonValue &ptVal : bObj["coordinates"].toArray()) {
+                if (ptVal.isArray()) {
+                    QJsonArray ptArr = ptVal.toArray();
+                    if (ptArr.size() >= 2) {
+                        double lng = ptArr[0].toDouble(); // 经度
+                        double lat = ptArr[1].toDouble();
+                        points.append(QPointF(lng, lat));
+                    }
+                }
+            }
+        }
+        roadPoints[name] = points;
+    }
+
     if (railTracks_.isEmpty() || buildings_.isEmpty()) return;
 
     minLat = maxLat = buildings_.first().points.first().y();
@@ -284,6 +307,11 @@ void RailMapViewerWidget::loadConfig() {
 
     for(const auto &build : buildings_) {
         for (const QPointF &pt : build.points) updateBounds(pt);
+    }
+
+    for (auto it = roadPoints.constBegin(); it != roadPoints.constEnd(); ++it) {
+        const QList<QPointF>& points = it.value();
+        for (const QPointF &pt : points) updateBounds(pt);
     }
 
     latSpan = qMax(maxLat - minLat, 1e-8);
@@ -309,6 +337,7 @@ void RailMapViewerWidget::drawAll() {
     legendGroup = nullptr;
     fenceItem = nullptr;
 
+    drawRoads();
     drawTracks();
     drawBuildings();
     drawFence();
@@ -324,14 +353,16 @@ void RailMapViewerWidget::rotateScene(float angle){
     // ✅ 使用固定的场景矩形，不包含动态元素
     qreal sceneWidth = h_pixel + 2 * marign;
     qreal sceneHeight = v_pixel + 2 * marign;
-    scene->setSceneRect(0, 0, sceneWidth, sceneHeight);
+    scene->setSceneRect(0, 0, sceneWidth, sceneHeight );
 
     // 应用变换
     view->resetTransform();
     view->rotate(angle);
     view->scale(1.5, 1.5);
+    // view->fitInView(scene->sceneRect(), Qt::KeepAspectRatioByExpanding);
     view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum() * 0.85);
 }
+
 
 void RailMapViewerWidget::drawTracks() {
     QPen masterPen(QColor("#00ffff"), 1.2);
@@ -365,8 +396,8 @@ void RailMapViewerWidget::drawTracks() {
 
 void RailMapViewerWidget::drawBuildings() {
     QColor topColor(20, 20, 40, 220);      // 顶部深灰蓝
-    QColor sideColor(180, 180, 190, 125);  // 侧面浅灰（参考您截图的灰色调）
-    QColor frontColor(70, 70, 80, 125);    // 正面深灰（可选）
+    QColor sideColor(180, 180, 190, 60);  // 侧面浅灰（参考您截图的灰色调）
+    QColor frontColor(70, 70, 80, 60);    // 正面深灰（可选）
     QColor edgeColor(74, 106, 255, 220);   // 边框亮蓝
 
     QPen pen(edgeColor, 1.5);
@@ -388,7 +419,7 @@ void RailMapViewerWidget::drawBuildings() {
         if (poly.size() < 3) continue;
 
         // ===== 情况1：名字为空 → 完整3D效果 =====
-        if (building.name.isEmpty()) {
+        if (building.name.isEmpty() || building.name.startsWith("build")) {
             // 1. 顶部面（原多边形）
             QPen topPen(frontColor, 1.5);
             topPen.setJoinStyle(Qt::MiterJoin);
@@ -449,7 +480,7 @@ void RailMapViewerWidget::drawBuildings() {
         for (const QPointF &p : poly) { cx += p.x(); cy += p.y(); }
         cx /= poly.size(); cy /= poly.size();
 
-        if (building.name == "厂修库") continue;
+        if (building.name == "厂修库" || building.name.startsWith("build")) continue;
 
         QGraphicsTextItem *text = scene->addText(building.name, font);
         text->setFlag(QGraphicsItem::ItemIgnoresTransformations);
@@ -496,6 +527,25 @@ void RailMapViewerWidget::drawBaseStation(){
         auto pos = geoToPixel(pt.x(), pt.y());
         iconItem->setPos(pos.x(), pos.y());
         scene->addItem(iconItem);
+    }
+}
+
+void RailMapViewerWidget::drawRoads(){
+    QColor color(180, 180, 190, 80);
+    // QColor color(70, 70, 80, 60);
+    // QColor color(58, 58, 58, 180);
+    QPen pen(color, 1.0);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+
+
+    for (auto it = roadPoints.constBegin(); it != roadPoints.constEnd(); ++it) {
+        const QList<QPointF>& points = it.value();
+        for (int i = 0; i < points.size() - 1; ++i) {
+            QPointF p1 = geoToPixel(points[i].x(), points[i].y());
+            QPointF p2 = geoToPixel(points[i+1].x(), points[i+1].y());
+            QGraphicsLineItem* line = scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), pen);
+        }
     }
 }
 
