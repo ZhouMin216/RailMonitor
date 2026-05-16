@@ -50,6 +50,20 @@ namespace CustomColors {
         static const QColor color{ "#44ff44" };
         return color;
     }
+
+    inline const QColor& buildingBorderColor() {
+        static const QColor color(180, 180, 190, 80);  // 灰色
+        return color;
+    }
+
+    inline const QColor& cabinetColor() {
+        static const QColor color(74, 106, 255, 255);
+        return color;
+    }
+
+
+
+
 }
 
 static QPixmap coloredSvg(const QString &path, const QColor &color, int w, int h)

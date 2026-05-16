@@ -12,5 +12,6 @@
         <file alias="whitelist_icon.svg">resources/assets/whitelist_icon.svg</file>
         <file alias="cabinet.svg">resources/assets/cabinet.svg</file>
         <file alias="signal.svg">resources/assets/signal.svg</file>
+        <file alias="base_station.svg">resources/assets/base_station_fill.svg</file>
     </qresource>
 </RCC>

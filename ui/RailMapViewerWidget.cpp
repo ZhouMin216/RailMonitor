@@ -74,6 +74,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
             delete fenceItem;
             fenceItem = nullptr;
         }
+        startFenceBtn->setEnabled(false);
         coordLabel->setText("点击地图添加围栏顶点（至少3个）");
     });
 
@@ -146,7 +147,8 @@ void RailMapViewerWidget::updateLegendPosition() {
     QSize vp = view->viewport()->size();
     qreal margin = 10;
     QPointF scenePos = view->mapToScene(
-        vp.width() - legendGroup->boundingRect().width() - margin,
+        // vp.width() - legendGroup->boundingRect().width() - margin,
+        margin,
         vp.height() - legendGroup->boundingRect().height() - margin
         );
     legendGroup->setPos(scenePos);
@@ -290,8 +292,8 @@ void RailMapViewerWidget::loadConfig() {
 
     if (railTracks_.isEmpty() || buildings_.isEmpty()) return;
 
-    minLat = maxLat = buildings_.first().points.first().y();
-    minLng = maxLng = buildings_.first().points.first().x();
+    minLat = maxLat = railTracks_.first().masterPoints.first().y();
+    minLng = maxLng = railTracks_.first().masterPoints.first().x();
 
     auto updateBounds = [&](const QPointF &pt) {
         minLat = qMin(minLat, pt.y());
@@ -304,7 +306,7 @@ void RailMapViewerWidget::loadConfig() {
         for (const QPointF &pt : track.masterPoints) updateBounds(pt);
         for (const QPointF &pt : track.slavePoints) updateBounds(pt);
     }
-
+/*
     for(const auto &build : buildings_) {
         for (const QPointF &pt : build.points) updateBounds(pt);
     }
@@ -313,7 +315,7 @@ void RailMapViewerWidget::loadConfig() {
         const QList<QPointF>& points = it.value();
         for (const QPointF &pt : points) updateBounds(pt);
     }
-
+*/
     latSpan = qMax(maxLat - minLat, 1e-8);
     lngSpan = qMax(maxLng - minLng, 1e-8);
 }
@@ -335,7 +337,7 @@ void RailMapViewerWidget::drawAll() {
     shoeMap.clear();
     scene->clear();
     legendGroup = nullptr;
-    fenceItem = nullptr;
+    // fenceItem = nullptr;
 
     drawRoads();
     drawTracks();
@@ -358,9 +360,9 @@ void RailMapViewerWidget::rotateScene(float angle){
     // 应用变换
     view->resetTransform();
     view->rotate(angle);
-    view->scale(1.5, 1.5);
+    view->scale(2.5, 2.5);
     // view->fitInView(scene->sceneRect(), Qt::KeepAspectRatioByExpanding);
-    view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum() * 0.85);
+    view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum() * 0.55);
 }
 
 
@@ -377,7 +379,7 @@ void RailMapViewerWidget::drawTracks() {
         for (int i = 0; i < track.masterPoints.size() - 1; ++i) {
             QPointF p1 = geoToPixel(track.masterPoints[i].x(), track.masterPoints[i].y());
             QPointF p2 = geoToPixel(track.masterPoints[i+1].x(), track.masterPoints[i+1].y());
-            QGraphicsLineItem* line = scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), masterPen);
+            QGraphicsLineItem* line = scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), slavePen);
 
             // QGraphicsDropShadowEffect* glow = new QGraphicsDropShadowEffect();
             // glow->setColor(QColor(0, 255, 255, 60));
@@ -395,12 +397,12 @@ void RailMapViewerWidget::drawTracks() {
 }
 
 void RailMapViewerWidget::drawBuildings() {
-    QColor topColor(20, 20, 40, 220);      // 顶部深灰蓝
+    QColor topColor(20, 20, 40, 150);      // 顶部深灰蓝
     QColor sideColor(180, 180, 190, 60);  // 侧面浅灰（参考您截图的灰色调）
     QColor frontColor(70, 70, 80, 60);    // 正面深灰（可选）
-    QColor edgeColor(74, 106, 255, 220);   // 边框亮蓝
+    // QColor edgeColor(74, 106, 255, 220);   // 边框亮蓝
 
-    QPen pen(edgeColor, 1.5);
+    QPen pen(CustomColors::buildingBorderColor(), 1.5);
     pen.setJoinStyle(Qt::MiterJoin);
     pen.setCapStyle(Qt::RoundCap);
 
@@ -416,7 +418,7 @@ void RailMapViewerWidget::drawBuildings() {
             QPointF px = geoToPixel(geo.x(), geo.y());
             poly << px;
         }
-        if (poly.size() < 3) continue;
+        if (poly.size() < 3 || building.name == "轮轴库") continue;
 
         // ===== 情况1：名字为空 → 完整3D效果 =====
         if (building.name.isEmpty() || building.name.startsWith("build")) {
@@ -476,22 +478,27 @@ void RailMapViewerWidget::drawBuildings() {
         }
 
         // ===== 文字标签 =====
-        qreal cx = 0, cy = 0;
-        for (const QPointF &p : poly) { cx += p.x(); cy += p.y(); }
-        cx /= poly.size(); cy /= poly.size();
+        // qreal cx = 0, cy = 0;
+        // for (const QPointF &p : poly) { cx += p.x(); cy += p.y(); }
+        // cx /= poly.size(); cy /= poly.size();
 
-        if (building.name == "厂修库" || building.name.startsWith("build")) continue;
+        // if (building.name == "厂修库" || building.name.startsWith("build")) continue;
 
-        QGraphicsTextItem *text = scene->addText(building.name, font);
-        text->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        text->setDefaultTextColor(QColor(255, 255, 255, 120));
-        text->setPos(cx - text->boundingRect().width()/2, cy - text->boundingRect().height()/2);
-        text->setZValue(4);
+        // QGraphicsTextItem *text = scene->addText(building.name, font);
+        // text->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+        // text->setDefaultTextColor(QColor(255, 255, 255, 120));
+        // text->setPos(cx - text->boundingRect().width()/2, cy - text->boundingRect().height()/2);
+        // text->setZValue(4);
     }
 }
 
 void RailMapViewerWidget::drawFence() {
     if (savedFencePoints.size() < 3) return;
+    if (fenceItem) {
+        scene->removeItem(fenceItem);
+        delete fenceItem;
+        fenceItem = nullptr;
+    }
 
     QPolygonF poly;
     for (const QPointF& geo : savedFencePoints) {
@@ -519,7 +526,7 @@ void RailMapViewerWidget::drawShoeCabinet(){
 void RailMapViewerWidget::drawBaseStation(){
     for (auto it = baseStationPoints.constBegin(); it != baseStationPoints.constEnd(); ++it) {
         QPointF pt = it.value();
-        QPixmap pixmap(coloredSvg(":/icon/signal.svg", QColor("#38BDF8"), 24, 24)); // 使用文件路径
+        QPixmap pixmap(coloredSvg(":/icon/base_station.svg", QColor("#38BDF8"), 24, 24)); // 使用文件路径
         QGraphicsPixmapItem *iconItem = new QGraphicsPixmapItem(pixmap);
         iconItem->setOffset(-12, -12); // 居中
         iconItem->setFlag(QGraphicsItem::ItemIgnoresTransformations);
@@ -572,16 +579,19 @@ void RailMapViewerWidget::updateFencePreview() {
 }
 
 void RailMapViewerWidget::finishFenceDrawing() {
+    if(!savedFencePoints.isEmpty()) return;
     if (currentFencePoints.size() < 3) {
         QMessageBox::warning(this, "警告", "围栏至少需要3个点！");
         return;
     }
 
+    startFenceBtn->setEnabled(true);
     savedFencePoints = currentFencePoints;
     isDrawingFence = false;
     emit saveGeoFence(savedFencePoints);
 
-    drawAll(); // 会调用 drawFence()
+    drawFence();
+    // drawAll(); // 会调用 drawFence()
 
     coordLabel->setText("电子围栏已设置");
 }
@@ -596,7 +606,8 @@ void RailMapViewerWidget::clearFence() {
         delete fenceItem;
         fenceItem = nullptr;
     }
-    drawAll();
+    // drawAll();
+    startFenceBtn->setEnabled(true);
     coordLabel->setText("电子围栏已清除");
 }
 
@@ -803,7 +814,7 @@ void RailMapViewerWidget::createLegend() {
     legendGroup = new QGraphicsItemGroup;
 
     // 设置图例背景（半透明深色面板）
-    QRectF bgRect(0, 0, 220, 200);
+    QRectF bgRect(0, 0, 220, 220);
     QPainterPath path;
     path.addRoundedRect(bgRect, 6, 6);
     QGraphicsPathItem  *bg = new QGraphicsPathItem(path);
@@ -812,7 +823,7 @@ void RailMapViewerWidget::createLegend() {
     // bg->setRadius(6); // 圆角
     legendGroup->addToGroup(bg);
 
-    int y = 10; // 起始 Y 坐标
+    int y = 2; // 起始 Y 坐标
     const int lineHeight = 25;
     const int iconX = 20;
     const int textX = 70;
@@ -853,7 +864,7 @@ void RailMapViewerWidget::createLegend() {
     // 3. 建筑物：蓝紫色填充多边形（简化为矩形）
     {
         QBrush brush(QColor(20, 20, 40, 180));
-        QPen pen(QColor("#4a6aff"), 2.0);
+        QPen pen(CustomColors::buildingBorderColor(), 2.0);
         QGraphicsRectItem *rect = new QGraphicsRectItem(iconX, y + 9, 30, 12);
         rect->setPen(pen);
         rect->setBrush(brush);
@@ -879,7 +890,7 @@ void RailMapViewerWidget::createLegend() {
         // rect->setPen(QPen(borderColor, 1.5));
         // rect->setBrush(grad);
 
-        QPixmap pixmap(coloredSvg(":/icon/cabinet.svg", QColor("#38BDF8"), 24, 24)); // 使用文件路径
+        QPixmap pixmap(coloredSvg(":/icon/cabinet.svg", CustomColors::cabinetColor(), 24, 24)); // 使用文件路径
         QGraphicsPixmapItem *iconItem = new QGraphicsPixmapItem(pixmap);
         // iconItem->setOffset(-6, -9); // 居中：因为 pixmap 是 48x48，中心在 (0,0)
         iconItem->setPos(iconX, y + 8);
@@ -889,7 +900,7 @@ void RailMapViewerWidget::createLegend() {
         QGraphicsTextItem *text = new QGraphicsTextItem("鞋柜");
         text->setFont(font);
         text->setDefaultTextColor(Qt::white);
-        text->setPos(textX, y);
+        text->setPos(textX, y+4);
         legendGroup->addToGroup(text);
         y += (lineHeight * 1.5);
     }
@@ -952,6 +963,21 @@ void RailMapViewerWidget::createLegend() {
         text->setDefaultTextColor(Qt::white);
         text->setPos(textX, y);
         legendGroup->addToGroup(text);
+        y += lineHeight;
+    }
+
+    {
+        QPixmap pixmap(coloredSvg(":/icon/base_station.svg", QColor("#38BDF8"), 24, 24)); // 使用文件路径
+        QGraphicsPixmapItem *iconItem = new QGraphicsPixmapItem(pixmap);
+        // iconItem->setOffset(-6, -9); // 居中：因为 pixmap 是 48x48，中心在 (0,0)
+        iconItem->setPos(iconX, y + 4);
+        legendGroup->addToGroup(iconItem);
+
+        QGraphicsTextItem *text = new QGraphicsTextItem("基站");
+        text->setFont(font);
+        text->setDefaultTextColor(Qt::white);
+        text->setPos(textX, y+4);
+        legendGroup->addToGroup(text);
     }
 
     // 关键：让图例不随地图变换（缩放/旋转）而变化
@@ -963,19 +989,11 @@ void RailMapViewerWidget::createLegend() {
     QSize vp = view->viewport()->size();
     qreal margin = 10;
     QPointF scenePos = view->mapToScene(
-        vp.width() - legendGroup->boundingRect().width() - margin,
+        // vp.width() - legendGroup->boundingRect().width() - margin,
+        margin,
         vp.height() - legendGroup->boundingRect().height() - margin
         );
     legendGroup->setPos(scenePos);
-
-    // QSize vp = view->size();
-    // qreal legendWidth = legendGroup->boundingRect().width(); // 获取图例的实际宽度
-    // qreal legendHeight = legendGroup->boundingRect().height(); // 获取图例的实际高度
-
-    // legendGroup->setPos(
-    //     std::max(0.0, vp.width() - legendWidth * 2 ),
-    //     std::max(0.0,  vp.height() + legendHeight * 1.5)
-    //     );
 }
 
 // =============== DeviceMarkerItem ===============
@@ -1010,7 +1028,10 @@ DeviceMarkerItem::DeviceMarkerItem(const ShoeData &data, QGraphicsScene *scene, 
 }
 
 void DeviceMarkerItem::updateVisible(){
-    if (shoeData.byOnline == ShoeStatus::Online && shoeData.byBatVal > 20) return;
+    if (shoeData.byOnline == ShoeStatus::Online && shoeData.byBatVal > 20) {
+        setVisible(true);
+        return;
+    }
     if (shoeData.byOnline == ShoeStatus::InCabinet) return;
     setVisible(!isVisible());
 }
@@ -1135,9 +1156,9 @@ void ShoeCabinetItem::updateData(const CabinetData& data)
 void ShoeCabinetItem::setupUI()
 {
     // 加载图片
-    QPixmap pixmap(coloredSvg(":/icon/cabinet.svg", QColor("#38BDF8"), 12,18)); // 或使用文件路径
+    QPixmap pixmap(coloredSvg(":/icon/cabinet.svg", CustomColors::cabinetColor(), 18,18)); // 或使用文件路径
     QGraphicsPixmapItem *iconItem = new QGraphicsPixmapItem(pixmap);
-    iconItem->setOffset(-6, -9); // 居中：因为 pixmap 是 48x48，中心在 (0,0)
+    iconItem->setOffset(-9, -9); // 居中：因为 pixmap 是 48x48，中心在 (0,0)
     addToGroup(iconItem);
 }
 

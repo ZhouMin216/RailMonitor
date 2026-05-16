@@ -7,10 +7,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Sql Svg Charts)
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
-# find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
-qt6_add_executable(RailMonitor
+qt6_add_executable(RailMonitor WIN32
     main.cpp
     database/DatabaseManager.cpp database/DatabaseManager.h
     network/NetworkManager.cpp network/NetworkManager.h
@@ -48,5 +46,3 @@ target_link_libraries(RailMonitor PRIVATE
     Qt6::Svg
     Qt6::Charts
 )
-target_link_libraries(RailMonitor PRIVATE Qt6::Widgets)
-# target_link_libraries(RailMonitor PRIVATE Qt6::Widgets)
