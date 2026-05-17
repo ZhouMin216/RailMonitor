@@ -110,7 +110,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     mainLayout->addWidget(controlWidget);
 
     loadConfig();
-    drawAll();
+    // drawAll();
 
     // 延迟执行 fitInView
     // QTimer::singleShot(0, this, [this]() {
@@ -348,7 +348,7 @@ void RailMapViewerWidget::drawAll() {
 
     createLegend();
 
-    rotateScene(-17.0);
+    rotateScene(-16.3);
 }
 
 void RailMapViewerWidget::rotateScene(float angle){
@@ -375,17 +375,14 @@ void RailMapViewerWidget::drawTracks() {
     slavePen.setCapStyle(Qt::RoundCap);
     slavePen.setJoinStyle(Qt::RoundJoin);
 
+    QFont font("Consolas", 10, QFont::Bold);
+    font.setLetterSpacing(QFont::PercentageSpacing, 110);
+
     for (const RailTrack &track : railTracks_) {
         for (int i = 0; i < track.masterPoints.size() - 1; ++i) {
             QPointF p1 = geoToPixel(track.masterPoints[i].x(), track.masterPoints[i].y());
             QPointF p2 = geoToPixel(track.masterPoints[i+1].x(), track.masterPoints[i+1].y());
-            QGraphicsLineItem* line = scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), slavePen);
-
-            // QGraphicsDropShadowEffect* glow = new QGraphicsDropShadowEffect();
-            // glow->setColor(QColor(0, 255, 255, 60));
-            // glow->setBlurRadius(4);
-            // glow->setOffset(0, 0);
-            // line->setGraphicsEffect(glow);
+            scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), slavePen);
         }
 
         for (int i = 0; i < track.slavePoints.size() - 1; ++i) {
@@ -393,6 +390,19 @@ void RailMapViewerWidget::drawTracks() {
             QPointF p2 = geoToPixel(track.slavePoints[i+1].x(), track.slavePoints[i+1].y());
             scene->addLine(p1.x(), p1.y(), p2.x(), p2.y(), slavePen);
         }
+
+        // ===== 文字标签 =====
+        QPointF start_pos = geoToPixel(track.masterPoints[0].x(), track.masterPoints[0].y());
+        QPointF end_pos = geoToPixel(track.masterPoints[track.masterPoints.size() - 1].x(), track.masterPoints[track.masterPoints.size() - 1].y());
+        QPointF pos = (start_pos.x() < end_pos.x()) ? start_pos : end_pos;
+        qreal cx = pos.x();
+        qreal cy = pos.y();
+
+        QGraphicsTextItem *text = scene->addText(track.name + " 股道", font);
+        text->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+        text->setDefaultTextColor(QColor(255, 255, 255, 255));
+        text->setPos(cx - text->boundingRect().width() / 2, cy - text->boundingRect().height() / 2);
+        text->setZValue(200);
     }
 }
 
@@ -696,7 +706,8 @@ void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
 void RailMapViewerWidget::handleIncomingFencePoint(const QList<QPointF>& data)
 {
     savedFencePoints = data;
-    drawAll();
+    drawFence();
+    // drawAll();
 }
 
 void RailMapViewerWidget::add_user_marker() {
