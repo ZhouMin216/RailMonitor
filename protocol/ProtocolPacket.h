@@ -5,6 +5,14 @@
 #include <QByteArray>
 #include <QDataStream>
 
+#include <QDateTime>
+struct EventLogEntry {
+    quint32 id;
+    QDateTime timestamp;
+    QString level;      // "info", "warning", "critical"
+    QString message;
+};
+
 class LittleEndianReader
 {
 public:
@@ -62,6 +70,12 @@ public:
         DT_WHITE_LIST_CONFIG = 0x02,
         DT_EVENT_DATA = 0x03,
         DT_STATUS_DATA = 0x04
+    };
+
+    enum EventLevel {
+        Info = 0x00,
+        Warning = 0x01,
+        Error = 0x02
     };
 
     virtual ~ProtocolPacket() = default;

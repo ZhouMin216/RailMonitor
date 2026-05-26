@@ -32,6 +32,12 @@ public slots:
     // 数据盘点配置
     void handleDataInventoryConfig(const QString &path, const QTime &time);
 
+    // 事件记录
+    void handleAddEventLog(const QString& level, const QString& message);
+    void handleGetEventLogs(int limit, int offset);
+    // void handleRemoveEventLog(quint32 id);
+    void handleGetTotalEventCount();
+
 signals:
     // 电子围栏
     void geoFenceData(const QList<QPointF>& data);
@@ -46,6 +52,11 @@ signals:
     // 通知错误
     void errorOccurred(const QString &msg);
 
+    void eventLogsLoaded(const QList<EventLogEntry>& logs);
+    void eventLogOperationResult(bool success, const QString& message = QString());
+    void totalEventCountLoaded(int count);
+
+
 private:
     QList<QPointF> loadGeoFence();
     void saveGeoFence(const QList<QPointF>& points);
@@ -54,6 +65,11 @@ private:
     bool addToWhitelist(const WhitelistEntry& entry);
     bool updateWhitelist(const WhitelistEntry& entry);
     bool removeFromWhitelist(quint32 id);
+
+    void cleanupOldEvents();
+    void addEventLog(const QString& level, const QString& message);
+    QList<EventLogEntry> getEventLogs(int limit, int offset);
+    int getTotalEventCount();
 
 private:
     QSqlDatabase m_db;

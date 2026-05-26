@@ -3,18 +3,18 @@
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
-#include <QPainter>
-#include <QApplication> // 用于获取调色板
+#include <QPushButton>
+#include <QApplication>
+#include <QDebug>
 
-EventPage::EventPage(QWidget *parent) : QWidget(parent) {
-    auto statsLayout = new QHBoxLayout;
-    onlineLabel = new QLabel("在线: 0");
-    offlineLabel = new QLabel("离线: 0");
+EventPage::EventPage(QWidget *parent)
+    : QWidget(parent)
+{
+    auto mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(8);
 
-    onlineLabel->setStyleSheet("color: #00b894; font-size: 16px; font-weight: bold; border: none; background: transparent;");
-    offlineLabel->setStyleSheet("color: #7f8c8d; font-size: 16px; font-weight: bold; border: none; background: transparent;");
-
-    auto layout = new QVBoxLayout(this);
+    // 标题
     QLabel *titleLabel = new QLabel("事件列表");
     titleLabel->setStyleSheet(R"(
         font-size: 24px;
@@ -24,15 +24,26 @@ EventPage::EventPage(QWidget *parent) : QWidget(parent) {
         background: transparent;
         margin-bottom: 4px;
     )");
+    mainLayout->addWidget(titleLabel);
 
-    statsLayout->addWidget(titleLabel);
-    // statsLayout->addStretch();
-    // statsLayout->addWidget(onlineLabel);
-    // statsLayout->addSpacing(20);
-    // statsLayout->addWidget(offlineLabel);
+    // 表格
+    setupTable();
+    mainLayout->addWidget(table);
 
-    layout->addLayout(statsLayout);
+    // 翻页控件
+    setupPagination();
+    mainLayout->addLayout(paginationLayout);
 
+    // onResize();
+
+    // 监听表格尺寸变化以调整每页行数
+    // connect(table->verticalScrollBar(), &QScrollBar::rangeChanged,
+    //         this, &EventPage::onResize);
+    // connect(table, &QTableWidget::viewportEntered, this, &EventPage::onResize);
+}
+
+void EventPage::setupTable()
+{
     table = new QTableWidget(0, static_cast<int>(Column::Count));
     QStringList headers;
     for (int i = 0; i < static_cast<int>(Column::Count); ++i) {
@@ -40,9 +51,11 @@ EventPage::EventPage(QWidget *parent) : QWidget(parent) {
     }
     table->setHorizontalHeaderLabels(headers);
     table->horizontalHeader()->setStretchLastSection(true);
-    table->verticalHeader()->setDefaultSectionSize(38);
+    table->verticalHeader()->setDefaultSectionSize(36);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table->verticalHeader()->setVisible(false);
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    table->setSelectionMode(QAbstractItemView::SingleSelection);
 
     table->setStyleSheet(R"(
         QTableWidget {
@@ -68,79 +81,130 @@ EventPage::EventPage(QWidget *parent) : QWidget(parent) {
             background-color: #2a2a40;
         }
     )");
-
-    layout->addWidget(table);
 }
 
-void EventPage::dataUpdated(){
-    QMap<quint16, std::shared_ptr<IconShoe>> shoeMap = DeviceManager::instance()->getShoeMap();
-    if (shoeMap.isEmpty()) return;
+void EventPage::setupPagination()
+{
+    paginationLayout = new QHBoxLayout;
 
-    // updateStatistics(shoeMap);
-    updateFromDeviceManager(shoeMap);
+    prevButton = new QPushButton("上一页");
+    nextButton = new QPushButton("下一页");
+    pageLabel = new QLabel("第 1 页，共 1 页");
 
+    prevButton->setEnabled(false);
+    nextButton->setEnabled(false);
+
+    connect(prevButton, &QPushButton::clicked, this, &EventPage::onPrevPage);
+    connect(nextButton, &QPushButton::clicked, this, &EventPage::onNextPage);
+
+    paginationLayout->addWidget(prevButton);
+    paginationLayout->addStretch();
+    paginationLayout->addWidget(pageLabel);
+    paginationLayout->addStretch();
+    paginationLayout->addWidget(nextButton);
+}
+
+int EventPage::calculateRowsPerPage() const
+{
+    int rowHeight = table->rowHeight(0);
+    if (rowHeight <= 0) rowHeight = 36;
+    int viewportHeight = table->viewport()->height();
+    int rows = qMax(1, viewportHeight / rowHeight);
+    return rows;
+}
+
+void EventPage::onResize()
+{
+    int newRows = calculateRowsPerPage();
+    if (newRows != currentRowsPerPage) {
+        currentRowsPerPage = newRows;
+        if (totalEventCount > 0) {
+            // 重新计算总页数并加载当前页
+            totalPages = (totalEventCount + currentRowsPerPage - 1) / currentRowsPerPage;
+            currentPage = qBound(1, currentPage, totalPages);
+            pageLabel->setText(QString("第 %1 页，共 %2 页").arg(currentPage).arg(totalPages));
+            prevButton->setEnabled(currentPage > 1);
+            nextButton->setEnabled(currentPage < totalPages);
+            loadCurrentPage();
+        }
+    }
+}
+
+void EventPage::loadCurrentPage()
+{
+    int offset = (currentPage - 1) * currentRowsPerPage;
+    emit getEventLogs(currentRowsPerPage, offset);
+}
+
+void EventPage::onTotalEventCountLoaded(int totalCount)
+{
+    totalEventCount = totalCount;
+    currentRowsPerPage = calculateRowsPerPage(); // 确保使用最新行数
+    totalPages = (totalCount == 0) ? 1 : (totalCount + currentRowsPerPage - 1) / currentRowsPerPage;
+    currentPage = qBound(1, currentPage, totalPages);
+
+    pageLabel->setText(QString("第 %1 页，共 %2 页").arg(currentPage).arg(totalPages));
+    prevButton->setEnabled(currentPage > 1);
+    nextButton->setEnabled(currentPage < totalPages);
+
+    loadCurrentPage();
+}
+
+void EventPage::onEventLogsLoaded(const QList<EventLogEntry>& logs)
+{
+    table->setRowCount(logs.size());
+    for (int row = 0; row < logs.size(); ++row) {
+        const auto& entry = logs[row];
+
+        // 时间列
+        auto timeItem = new QTableWidgetItem(formatTimestamp(entry.timestamp));
+        timeItem->setTextAlignment(Qt::AlignCenter);
+        table->setItem(row, columnIndex(Column::EventTime), timeItem);
+
+        // 等级列
+        auto levelItem = new QTableWidgetItem(entry.level);
+        levelItem->setTextAlignment(Qt::AlignCenter);
+        levelItem->setForeground(levelColor(entry.level));
+        levelItem->setFont(QFont("Consolas", 10, QFont::Bold));
+        table->setItem(row, columnIndex(Column::Level), levelItem);
+
+        // 详情列
+        auto detailItem = new QTableWidgetItem(entry.message);
+        detailItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        table->setItem(row, columnIndex(Column::Details), detailItem);
+    }
+
+    // 调整列宽
     for (int col = 0; col < table->columnCount(); ++col) {
         table->resizeColumnToContents(col);
-        if (table->columnWidth(col) > 180) {
-            table->setColumnWidth(col, 180);
+        if (table->columnWidth(col) > 200) {
+            table->setColumnWidth(col, 200);
         }
     }
 }
 
-void EventPage::updateFromDeviceManager(const QMap<quint16, std::shared_ptr<IconShoe>>& shoeMap) {
-    const int targetRowCount = shoeMap.size();
-    const int currentRowCount = table->rowCount();
-
-    if (targetRowCount != currentRowCount) {
-        table->setRowCount(targetRowCount);
-        for (int row = 0; row < targetRowCount; ++row) {
-            for (int col = 0; col < static_cast<int>(Column::Count); ++col) {
-                if (!table->item(row, col)) {
-                    table->setItem(row, col, new QTableWidgetItem());
-                    table->item(row, col)->setTextAlignment(Qt::AlignCenter);
-                }
-            }
-        }
-    }
-
-    int row = 0;
-    for (auto it = shoeMap.constBegin(); it != shoeMap.constEnd(); ++it) {
-        auto shoe = it.value();
-        if (!shoe) continue;
-
-
-        // === 使用新的 StatusItem ===
-        // auto shoeData = shoe->GetShoeData();
-        // delete table->takeItem(row, columnIndex(Column::Status));
-        // table->setItem(row, columnIndex(Column::Status), new StatusItem(shoeData.byOnline));
-
-        // QString posStr = QString("经:%1, 纬:%2")
-        //                      .arg(shoeData.lng, 0, 'f', 6)
-        //                      .arg(shoeData.lat, 0, 'f', 6);
-        // table->item(row, columnIndex(Column::Position))->setText(posStr);
-
-        // // === 电量列 ===
-        // int batteryPercentage = static_cast<int>(shoeData.byBatVal);
-        // // int batteryPercentage = qBound(0, static_cast<int>((shoeData.byBatVal * 100) / 255.0f), 100);
-        // table->item(row, columnIndex(Column::BatVal))->setText(QString::number(batteryPercentage));
-
-        // table->item(row, columnIndex(Column::PosQuality))->setText(EnumtoString(shoeData.byPosQuality));
-        // table->item(row, columnIndex(Column::StarNum))->setText(QString::number(shoeData.byStarNum));
-        // table->item(row, columnIndex(Column::CabinetId))->setText(QString::number(shoe->GetCabinetID()));
-
-        row++;
+void EventPage::onPrevPage()
+{
+    if (currentPage > 1) {
+        currentPage--;
     }
 }
 
-void EventPage::updateStatistics(const QMap<quint16, std::shared_ptr<IconShoe>>& shoeMap) {
-    int online = 0, offline = 0;
-    for (const auto& shoe : shoeMap) {
-        if (!shoe) continue;
-        auto status = shoe->GetShoeData().byOnline;
-        if (status == ShoeStatus::Online || status == ShoeStatus::InCabinet) online++;
-        else if (status == ShoeStatus::Offline) offline++;
+void EventPage::onNextPage()
+{
+    if (currentPage < totalPages) {
+        currentPage++;
     }
-    onlineLabel->setText(QString("在线: %1").arg(online));
-    offlineLabel->setText(QString("离线: %1").arg(offline));
 }
 
+QString EventPage::formatTimestamp(const QDateTime& dt) const
+{
+    return dt.toString("yyyy-MM-dd HH:mm:ss");
+}
+
+QColor EventPage::levelColor(const QString& level) const
+{
+    if (level == "critical") return QColor("#ff6b6b"); // 红
+    if (level == "warning")  return QColor("#feca57"); // 橙黄
+    return QColor("#48dbfb"); // info: 青蓝
+}

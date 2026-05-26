@@ -92,4 +92,38 @@ static QPixmap coloredSvg(const QString &path, const QColor &color, int w, int h
     return pixmap;
 }
 
+static double geoDistanceMeters(double lat1, double lon1, double lat2, double lon2) {
+    const double EARTH_RADIUS = 6378137.0; // WGS84 长半轴
+    double dLat = (lat2 - lat1) * M_PI / 180.0;
+    double dLon = (lon2 - lon1) * M_PI / 180.0;
+    double avgLat = (lat1 + lat2) / 2.0 * M_PI / 180.0;
+
+    double dx = dLon * cos(avgLat);
+    double dy = dLat;
+    return sqrt(dx * dx + dy * dy) * EARTH_RADIUS;
+}
+
+// 计算点(px,py)到线段(ax,ay)-(bx,by)的最短距离（单位：米）
+static double pointToSegmentDistMeters(
+    double px, double py,
+    double ax, double ay,
+    double bx, double by)
+{
+    double abx = bx - ax, aby = by - ay;
+    double apx = px - ax, apy = py - ay;
+    double ab2 = abx * abx + aby * aby;
+
+    if (ab2 < 1e-20) { // A和B重合
+        return geoDistanceMeters(px, py, ax, ay);
+    }
+
+    double t = (apx * abx + apy * aby) / ab2;
+    t = qBound(0.0, t, 1.0); // 钳制到 [0, 1]
+
+    double closestX = ax + t * abx;
+    double closestY = ay + t * aby;
+
+    return geoDistanceMeters(px, py, closestX, closestY);
+}
+
 #endif // UTILS_H

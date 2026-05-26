@@ -4,9 +4,13 @@
 #include <QWidget>
 #include <QTableWidget>
 #include <QLabel>
-#include <QStyledItemDelegate>
+#include <QPushButton>
+#include <QHBoxLayout>
+#include <QDateTime>
 
-#include "DeviceManager.h"
+#include "protocol/ProtocolPacket.h"
+
+class DatabaseManager;
 
 class EventPage : public QWidget
 {
@@ -24,9 +28,9 @@ public:
     static QString columnHeader(Column col) {
         switch (col) {
         case Column::EventTime: return "时间";
-        case Column::Level:  return "等级";
-        case Column::Details:  return "详情";
-        default:                 return "";
+        case Column::Level:     return "等级";
+        case Column::Details:   return "详情";
+        default:                return "";
         }
     }
 
@@ -34,19 +38,42 @@ public:
         return static_cast<int>(col);
     }
 
-public slots:
-    void dataUpdated();
+    void getTotalEventCnt(){
+        emit getTotalEventCount();
+    }
 
 signals:
+    void getEventLogs(int limit, int offset);
+    void getTotalEventCount();
+public slots:
+    void onEventLogsLoaded(const QList<EventLogEntry>& logs);
+    void onTotalEventCountLoaded(int totalCount);
+
+private slots:
+    void onNextPage();
+    void onPrevPage();
+    void onResize();
 
 private:
-    void updateFromDeviceManager(const QMap<quint16, std::shared_ptr<IconShoe>>& shoeMap);
-    void updateStatistics(const QMap<quint16, std::shared_ptr<IconShoe>>& shoeMap);
+    void setupTable();
+    void setupPagination();
+    void loadCurrentPage();
+    QString formatTimestamp(const QDateTime& dt) const;
+    QColor levelColor(const QString& level) const;
+    int calculateRowsPerPage() const;
 
 private:
     QTableWidget *table;
-    QLabel *onlineLabel = nullptr;
-    QLabel *offlineLabel = nullptr;
+
+    QHBoxLayout* paginationLayout = nullptr;
+    QLabel *pageLabel = nullptr;
+    QPushButton *prevButton = nullptr;
+    QPushButton *nextButton = nullptr;
+
+    int currentPage = 1;      // 从 1 开始
+    int totalPages = 1;
+    int currentRowsPerPage = 0;
+    int totalEventCount = 0;
 };
 
 #endif // EVENTPAGE_H

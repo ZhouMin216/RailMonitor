@@ -24,6 +24,8 @@
 #include "DeviceManager.h"
 #include "utils.h"
 
+
+
 RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
     : QWidget(parent) {
     scene = new QGraphicsScene(this);
@@ -69,6 +71,7 @@ RailMapViewerWidget::RailMapViewerWidget(QWidget *parent)
         }
         isDrawingFence = true;
         currentFencePoints.clear();
+        savedFencePoints.clear();
         if (fenceItem) {
             scene->removeItem(fenceItem);
             delete fenceItem;
@@ -365,6 +368,30 @@ void RailMapViewerWidget::rotateScene(float angle){
     view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum() * 0.55);
 }
 
+QString RailMapViewerWidget::findTrackAtGeo(double lat, double lon, double toleranceMeters) const {
+    for (const RailTrack &track : railTracks_) {
+        // 检查 masterPoints
+        for (int i = 0; i < (int)track.masterPoints.size() - 1; ++i) {
+            double dist = pointToSegmentDistMeters(
+                lat, lon,
+                track.masterPoints[i].y(), track.masterPoints[i].x(),     // 注意: 通常y=lat, x=lon  masterPoints.append(QPointF(lng, lat));
+                track.masterPoints[i+1].y(), track.masterPoints[i+1].x()
+                );
+            if (dist <= toleranceMeters) return track.name;
+        }
+
+        // 检查 slavePoints
+        for (int i = 0; i < (int)track.slavePoints.size() - 1; ++i) {
+            double dist = pointToSegmentDistMeters(
+                lat, lon,
+                track.slavePoints[i].y(), track.slavePoints[i].x(),
+                track.slavePoints[i+1].y(), track.slavePoints[i+1].x()
+                );
+            if (dist <= toleranceMeters) return track.name;
+        }
+    }
+    return "";
+}
 
 void RailMapViewerWidget::drawTracks() {
     QPen masterPen(QColor("#00ffff"), 1.2);
@@ -601,7 +628,6 @@ void RailMapViewerWidget::finishFenceDrawing() {
     emit saveGeoFence(savedFencePoints);
 
     drawFence();
-    // drawAll(); // 会调用 drawFence()
 
     coordLabel->setText("电子围栏已设置");
 }
@@ -692,13 +718,23 @@ void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
                 outOfFenceIds << QString::number(shoe.wDevID);
             }
             marker->setInPolygon(inPolygon);
+
+            QString trackName = findTrackAtGeo(shoe.lat, shoe.lng);
+            if (!trackName.isEmpty()) {
+                marker->setToolTip("铁鞋" + shoe.paintedID + " 在轨道 " + trackName);
+                qDebug() << "点击了轨道:" << trackName;
+            } else {
+                marker->setToolTip("铁鞋" + shoe.paintedID + " 不在轨道 ");
+                qDebug() << "未点击任何轨道";
+            }
+
         }
     }
 
     if (!outOfFenceIds.isEmpty()) {
         // NonModalMessageBox::warning(this, "警告",
         //                      QString("以下铁鞋已超出电子围栏：%1").arg(outOfFenceIds.join(", ")));
-        QMessageBox::warning(this, "警告",
+        NonModalMessageBox::warning(this, "警告",
                                     QString("以下铁鞋已超出电子围栏：%1").arg(outOfFenceIds.join(", ")));
     }
 }
@@ -706,8 +742,6 @@ void RailMapViewerWidget::updateShoes(const QList<ShoeData>& data)
 void RailMapViewerWidget::handleIncomingFencePoint(const QList<QPointF>& data)
 {
     savedFencePoints = data;
-    drawFence();
-    // drawAll();
 }
 
 void RailMapViewerWidget::add_user_marker() {
@@ -726,6 +760,13 @@ void RailMapViewerWidget::add_user_marker() {
     addDeviceMarker("用户设备", lat, lng);
     lngInput->clear();
     latInput->clear();
+
+    QString trackName = findTrackAtGeo(lat, lng);
+    if (!trackName.isEmpty()) {
+        qDebug() << "点击了轨道:" << trackName;
+    } else {
+        qDebug() << "未点击任何轨道";
+    }
 
     if (!savedFencePoints.isEmpty()) {
         QPointF pt(lng, lat);

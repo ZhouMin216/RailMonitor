@@ -85,6 +85,7 @@ private:
     void updateFencePreview();
     void updateAspectRatio();
     void rotateScene(float angle);
+    QString findTrackAtGeo(double lat, double lon, double toleranceMeters = 0.5) const; // 50cm
 
     QPointF pixelToGeo(qreal x, qreal y);
     bool pointInPolygon(const QPointF& point, const QList<QPointF>& polygon);

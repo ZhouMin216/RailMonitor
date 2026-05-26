@@ -70,4 +70,17 @@ QHeaderView::section {
     font-weight: bold;
 }
 
+QToolTip {
+    /* 使用与全局背景视觉一致但完全不透明的颜色 */
+    background-color: #0f172a;
+    color: #e0e0ff;
+
+    /* Windows 原生主题下，没有 border 则 background-color 会被无视 */
+    border: 1px solid #4a6aff;
+
+    padding: 4px 8px;
+    font-family: "Microsoft YaHei", sans-serif;
+    font-size: 10pt;
+}
+
 :focus { outline: none; }

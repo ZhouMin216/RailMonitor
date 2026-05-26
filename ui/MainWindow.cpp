@@ -54,6 +54,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(dataInventoryPage_, &DataInventoryPage::dataInventoryConfig, m_databaseManager, &DatabaseManager::handleDataInventoryConfig);
     connect(m_databaseManager, &DatabaseManager::dataInventoryConfigLoaded, dataInventoryPage_, &DataInventoryPage::handleDataInventoryConfig);
 
+    connect(m_databaseManager, &DatabaseManager::eventLogsLoaded, eventPage_, &EventPage::onEventLogsLoaded);
+    connect(m_databaseManager, &DatabaseManager::totalEventCountLoaded, eventPage_, &EventPage::onTotalEventCountLoaded);
+
+    connect(eventPage_, &EventPage::getTotalEventCount, m_databaseManager, &DatabaseManager::handleGetTotalEventCount);
+    connect(eventPage_, &EventPage::getEventLogs, m_databaseManager, &DatabaseManager::handleGetEventLogs);
+
+
+
 
     m_databaseManager->initDatabase();
     m_databaseManager->loadDataInventoryConfig();
@@ -72,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     loginDialog = new LoginDialog(this);
     QObject::connect(loginDialog, &LoginDialog::loginSuccess, [=]() {
         loginDialog->hide();           // 隐藏登录框
+        eventPage_->getTotalEventCnt();
     });
     loginDialog->show();
 }
