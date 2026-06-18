@@ -173,6 +173,12 @@ void DatabaseManager::handleGetWhitelist(quint32 id) {
     qDebug() << "===================================";
 }
 
+void DatabaseManager::handleReplaceAllWhitelist(const QMap<quint32, WhitelistEntry>& whitelist_map){
+    qDebug() << "=============== handleReplaceAllWhitelist ====================";
+    bool ok = replaceAllWhitelist(whitelist_map);
+    emit whitelistOperationResult(ok, ok ? "导入成功" : "导入失败");
+}
+
 void DatabaseManager::handleAddToWhitelist(const WhitelistEntry& entry) {
     qDebug() << "=============== handleAddToWhitelist ====================";
     bool ok = addToWhitelist(entry);
@@ -249,6 +255,53 @@ bool DatabaseManager::removeFromWhitelist(quint32 id) {
         return false;
     }
     return query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::replaceAllWhitelist(const QMap<quint32, WhitelistEntry> &whitelist_map)
+{
+    // 1. 开启事务，确保清空和插入操作的原子性
+    if (!m_db.transaction()) {
+        qWarning() << "Start transaction failed:" << m_db.lastError();
+        return false;
+    }
+
+    // 2. 清空现有的所有白名单数据
+    QSqlQuery clearQuery(m_db);
+    clearQuery.prepare("DELETE FROM whitelist");
+    if (!clearQuery.exec()) {
+        qWarning() << "Clear whitelist failed:" << clearQuery.lastError();
+        m_db.rollback(); // 失败则回滚
+        return false;
+    }
+
+    // 3. 准备插入语句（只 prepare 一次，提高性能）
+    QSqlQuery insertQuery(m_db);
+    insertQuery.prepare("INSERT INTO whitelist (id, name, department) VALUES (?, ?, ?)");
+
+    // 4. 遍历传入的 map，逐条绑定并执行插入
+    for (auto it = whitelist_map.cbegin(); it != whitelist_map.cend(); ++it) {
+        const WhitelistEntry &entry = it.value();
+
+        insertQuery.addBindValue(entry.uid);
+        insertQuery.addBindValue(entry.name);
+        insertQuery.addBindValue(entry.department);
+
+        if (!insertQuery.exec()) {
+            qWarning() << "Batch insert whitelist failed at UID:" << entry.uid
+                       << "Error:" << insertQuery.lastError();
+            m_db.rollback(); // 只要有一条失败，立即回滚整个操作
+            return false;
+        }
+    }
+
+    // 5. 所有操作成功，提交事务
+    if (!m_db.commit()) {
+        qWarning() << "Commit transaction failed:" << m_db.lastError();
+        m_db.rollback();
+        return false;
+    }
+
+    return true;
 }
 
 void DatabaseManager::loadDataInventoryConfig() {

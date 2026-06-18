@@ -97,9 +97,9 @@ void NetworkManager::startDiscovery() {
             if (!broadcast.isNull() && broadcast != QHostAddress("0.0.0.0")) {
                 qint64 sent = m_udpSocket->writeDatagram(msg, broadcast, BROADCAST_PORT);
                 if (sent > 0) {
-                    qDebug() << "Sent discovery to broadcast address"
-                             << broadcast.toString()
-                             << "via interface" << interface.name();
+                    // qDebug() << "Sent discovery to broadcast address"
+                    //          << broadcast.toString()
+                    //          << "via interface" << interface.name();
                     sentAtLeastOne = true;
                 } else {
                     qDebug() << "Failed to send to" << broadcast.toString()

@@ -37,6 +37,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(whiteListPage_, &WhiteListPage::entryUpdated, m_databaseManager, &DatabaseManager::handleUpdateWhitelist);
     connect(whiteListPage_, &WhiteListPage::entryRemoved, m_databaseManager, &DatabaseManager::handleRemoveFromWhitelist);
     connect(whiteListPage_, &WhiteListPage::getWhitelist, m_databaseManager, &DatabaseManager::handleGetWhitelist);
+    connect(whiteListPage_, &WhiteListPage::replaceWhitelist, m_databaseManager, &DatabaseManager::handleReplaceAllWhitelist);
+
     connect(m_databaseManager, &DatabaseManager::whitelistOperationResult, whiteListPage_, &WhiteListPage::handleOperateResult);
     connect(m_databaseManager, &DatabaseManager::whitelistData, whiteListPage_, &WhiteListPage::refreshTable);
     connect(m_databaseManager, &DatabaseManager::whitelistData, this, [this](const QMap<quint32, WhitelistEntry>& entries){

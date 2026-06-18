@@ -59,6 +59,7 @@ signals:
     void entryUpdated(const WhitelistEntry& entry);
     void entryRemoved(quint32 uid);
     void getWhitelist(quint32 uid); // uid等于0时获取全部白名单
+    void replaceWhitelist(const QMap<quint32, WhitelistEntry>& whitelist);
 
 public slots:
     void refreshTable(const WhitelistMap &entries);
@@ -66,7 +67,9 @@ public slots:
     void onEditClicked(int row);
     void onDeleteClicked(int row);
     void handleOperateResult(bool ok, const QString& msg);
-    void onSaveGlobalConfig();
+
+    void onImportClicked(); // 新增
+    void onExportClicked(); // 新增
 private:
     void setupUI();
     void populateTable(const WhitelistMap &entries);
@@ -83,6 +86,9 @@ private:
     QCheckBox *m_cbAlertPush;
     QCheckBox *m_cbAnonymize;
     QPushButton *m_btnSaveGlobal;
+
+    QPushButton *m_btnImport; // 新增
+    QPushButton *m_btnExport; // 新增
 
     QString m_editingUidStr; // 临时存储正在编辑的 UID 字符串（用于按钮文本切换）
 

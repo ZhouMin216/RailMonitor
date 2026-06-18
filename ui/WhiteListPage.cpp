@@ -217,6 +217,35 @@ void WhiteListPage::setupUI()
     formLayout->addWidget(m_btnReset);
     // formLayout->addStretch();
 
+    // 导入/导出 按钮水平布局
+    auto ioBtnLayout = new QHBoxLayout();
+    ioBtnLayout->setSpacing(10);
+
+    m_btnImport = new QPushButton("导入名单");
+    m_btnImport->setStyleSheet(
+        "QPushButton {"
+        "   background: transparent; color: #38bdf8; border: 1px solid #38bdf8;"
+        "   border-radius: 6px; padding: 6px; font-size: 12px;"
+        "}"
+        "QPushButton:hover { background-color: rgba(56, 189, 248, 0.1); }"
+        );
+    connect(m_btnImport, &QPushButton::clicked, this, &WhiteListPage::onImportClicked);
+
+    m_btnExport = new QPushButton("导出名单");
+    m_btnExport->setStyleSheet(
+        "QPushButton {"
+        "   background: transparent; color: #94a3b8; border: 1px solid #334155;"
+        "   border-radius: 6px; padding: 6px; font-size: 12px;"
+        "}"
+        "QPushButton:hover { background-color: rgba(56, 189, 248, 0.1); color: #cbd5e1; }"
+        );
+    connect(m_btnExport, &QPushButton::clicked, this, &WhiteListPage::onExportClicked);
+
+    ioBtnLayout->addWidget(m_btnImport);
+    ioBtnLayout->addWidget(m_btnExport);
+
+    formLayout->addLayout(ioBtnLayout);
+
     rightLayout->addWidget(formContainer);
     rightLayout->addStretch();
 
@@ -328,14 +357,14 @@ void WhiteListPage::onAddClicked()
     QString dept = m_lineDept->text().trimmed();
 
     if (uidStr.isEmpty() || name.isEmpty() || dept.isEmpty()) {
-        QMessageBox::warning(this, "输入错误", "请填写授权ID、姓名和部门！");
+        NonModalMessageBox::warning(this, "输入错误", "请填写授权ID、姓名和部门！");
         return;
     }
 
     bool ok = false;
     quint64 val = uidStr.toULongLong(&ok);
     if (!ok || val > 4294967295ULL) {
-        QMessageBox::warning(this, "输入错误", "授权ID必须是 0 ~ 4294967295 之间的整数！");
+        NonModalMessageBox::warning(this, "输入错误", "授权ID必须是 0 ~ 4294967295 之间的整数！");
         return;
     }
     quint32 uid = static_cast<quint32>(val);
@@ -343,7 +372,7 @@ void WhiteListPage::onAddClicked()
     if (m_editingUidStr.isEmpty()) {
         // 新增
         if (m_whitelist.contains(uid)) {
-            QMessageBox::warning(this, "重复ID", "该授权ID已存在！");
+            NonModalMessageBox::warning(this, "重复ID", "该授权ID已存在！");
             return;
         }
         WhitelistEntry entry{uid, name, dept};
@@ -363,7 +392,7 @@ void WhiteListPage::onAddClicked()
             }
         }
         if (!wasFound) {
-            QMessageBox::critical(this, "错误", "编辑失败：原始记录不存在");
+            NonModalMessageBox::warning(this, "错误", "编辑失败：原始记录不存在");
             return;
         }
         // QMessageBox::information(this, "成功", "信息已更新！");
@@ -413,13 +442,134 @@ void WhiteListPage::onDeleteClicked(int row)
 
 void WhiteListPage::handleOperateResult(bool ok, const QString& msg){
     qDebug() << ok << " " << msg;
-    QMessageBox::warning(this, ok ? "成功" : "失败", msg);
+    if (msg == "导入成功") return; // 数据库导入成功不需要提示，因为执行导入操作时已经提示过了
+    NonModalMessageBox::warning(this, ok ? "成功" : "失败", msg);
 
     emit getWhitelist(0);
 }
 
-void WhiteListPage::onSaveGlobalConfig()
+void WhiteListPage::onImportClicked()
 {
-    // 预留接口：此处可调用数据库保存
-    QMessageBox::information(this, "提示", "全局配置保存成功（内存模拟）");
+    QString fileName = QFileDialog::getOpenFileName(this, "导入白名单", "", "CSV Files (*.csv)");
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        NonModalMessageBox::warning(this, "错误", "无法打开文件！");
+        return;
+    }
+
+    QTextStream in(&file);
+    in.setEncoding(QStringConverter::Utf8); // Qt6 编码设置
+
+    // ===== 1. 表头校验 =====
+    if (in.atEnd()) {
+        NonModalMessageBox::warning(this, "导入失败", "CSV文件为空！");
+        file.close();
+        return;
+    }
+
+    QString headerLine = in.readLine().trimmed();
+    // 检查表头是否包含必要的字段（不区分大小写）
+    bool hasUid = headerLine.contains("授权ID", Qt::CaseInsensitive);
+    bool hasName = headerLine.contains("姓名", Qt::CaseInsensitive) ;
+    bool hasDept = headerLine.contains("所属部门", Qt::CaseInsensitive);
+
+    if (!hasUid || !hasName || !hasDept) {
+        NonModalMessageBox::warning(this, "表头格式错误",
+                             "CSV文件缺少必要的表头字段！\n"
+                             "请确保首行包含：授权ID、姓名、所属部门");
+        file.close();
+        return;
+    }
+
+    // ===== 2. 解析数据并校验重复ID =====
+    WhitelistMap newEntries;
+    QSet<quint32> processedUids; // 用于检查本次导入文件内部的重复
+    QStringList duplicateIds;    // 记录所有发生重复的ID
+    int lineNum = 1;             // 因为跳过了表头，数据从第2行开始算起
+
+    while (!in.atEnd()) {
+        lineNum++;
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty()) continue;
+
+        QStringList cols = line.split(",");
+        if (cols.size() < 3) {
+            NonModalMessageBox::warning(this, "格式错误", QString("第 %1 行格式不正确（列数不足），已中止导入").arg(lineNum));
+            file.close();
+            return;
+        }
+
+        bool ok = false;
+        quint64 val = cols[0].trimmed().toULongLong(&ok);
+        if (!ok || val > 4294967295ULL) {
+            NonModalMessageBox::warning(this, "格式错误", QString("第 %1 行授权ID无效，已中止导入").arg(lineNum));
+            file.close();
+            return;
+        }
+
+        quint32 uid = static_cast<quint32>(val);
+
+        // 检查是否在【本次导入的文件】中重复
+        if (processedUids.contains(uid)) {
+            duplicateIds << QString::number(uid) + " (第" + QString::number(lineNum) + "行)";
+            continue;
+        }
+
+        QString name = cols[1].trimmed();
+        QString dept = cols[2].trimmed();
+
+        processedUids.insert(uid);
+        newEntries[uid] = {uid, name, dept};
+    }
+    file.close();
+
+    // ===== 3. 处理校验结果 =====
+    // 如果发现任何重复ID，拒绝导入并提示用户修改
+    if (!duplicateIds.isEmpty()) {
+        QString msg = "检测到以下授权ID存在重复，请处理好数据后重新导入：\n\n" + duplicateIds.join("\n");
+        NonModalMessageBox::warning(this, "发现重复数据", msg);
+        return; // 中止导入操作
+    }
+
+    // 校验通过，执行全量覆盖
+    m_whitelist = newEntries;
+    populateTable(m_whitelist);
+
+    // 将 m_whitelist 全量同步到数据库
+    emit replaceWhitelist(m_whitelist);
+
+    NonModalMessageBox::warning(this, "成功", QString("成功导入 %1 条白名单记录！").arg(newEntries.size()));
+}
+
+void WhiteListPage::onExportClicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, "导出白名单", "whitelist.csv", "CSV Files (*.csv)");
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        NonModalMessageBox::warning(this, "错误", "无法创建/打开文件！");
+        return;
+    }
+
+    // 在创建 QTextStream 之前，直接往文件写入 BOM 头
+    file.write("\xEF\xBB\xBF");
+
+    QTextStream out(&file);
+    out.setEncoding(QStringConverter::Utf8); // 设置流编码为 UTF-8
+
+    // 写入表头
+    out << "授权ID,姓名,所属部门\n";
+
+    // 遍历当前内存中的白名单数据写入文件
+    for (auto it = m_whitelist.cbegin(); it != m_whitelist.cend(); ++it) {
+        const WhitelistEntry &e = it.value();
+        // 字段加双引号包裹，防止内容包含逗号导致错位
+        out << e.uid << ",\"" << e.name << "\",\"" << e.department << "\"\n";
+    }
+
+    file.close();
+    NonModalMessageBox::warning(this, "成功", "白名单已成功导出！");
 }

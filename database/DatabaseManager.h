@@ -28,6 +28,7 @@ public slots:
     void handleUpdateWhitelist(const WhitelistEntry& entry);
     void handleRemoveFromWhitelist(quint32 id);
     void handleGetWhitelist(quint32 id);
+    void handleReplaceAllWhitelist(const QMap<quint32, WhitelistEntry>& whitelist_map);
 
     // 数据盘点配置
     void handleDataInventoryConfig(const QString &path, const QTime &time);
@@ -65,6 +66,7 @@ private:
     bool addToWhitelist(const WhitelistEntry& entry);
     bool updateWhitelist(const WhitelistEntry& entry);
     bool removeFromWhitelist(quint32 id);
+    bool replaceAllWhitelist(const QMap<quint32, WhitelistEntry>& whitelist_map);
 
     void cleanupOldEvents();
     void addEventLog(const QString& level, const QString& message);
